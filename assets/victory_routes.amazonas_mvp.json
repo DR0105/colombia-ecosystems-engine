@@ -1,0 +1,56 @@
+{
+  "routes": [
+    {
+      "id": "restoration",
+      "name": "Restauracion del Amazonas",
+      "requiredCards": [
+        "restauracion_riberena",
+        "biodiversity_corridors",
+        "community_agreement",
+        "satellite_monitoring",
+        "collective_titling",
+        "integral_reserve"
+      ],
+      "minCards": 4,
+      "maxDeforestation": 1200,
+      "maxExclusive": false,
+      "minPeople": 0,
+      "minLand": 3,
+      "noTerminalEvent": true
+    },
+    {
+      "id": "sustainable_transition",
+      "name": "Transicion sostenible",
+      "requiredCards": [
+        "energy_transition",
+        "solar_industry",
+        "local_economy",
+        "amazon_governance",
+        "circular_economy"
+      ],
+      "minCards": 4,
+      "maxDeforestation": 2500,
+      "maxExclusive": true,
+      "minPeople": 5,
+      "minLand": 0,
+      "noTerminalEvent": true
+    },
+    {
+      "id": "social_wellbeing",
+      "name": "Bienestar social",
+      "requiredCards": [
+        "community_health",
+        "sustainable_infrastructure",
+        "community_guard",
+        "amazon_governance",
+        "peace_agreements"
+      ],
+      "minCards": 4,
+      "maxDeforestation": 2500,
+      "maxExclusive": true,
+      "minPeople": 7,
+      "minLand": 0,
+      "noTerminalEvent": true
+    }
+  ]
+}

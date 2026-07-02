@@ -1,0 +1,235 @@
+[
+  {
+    "id": "livestock", "name": "Ganaderia", "type": "structure", "sector": "industry", "startingCard": true,
+    "cost": { "money": 0, "people": 0, "land": 0 }, "requires": [], "arrows": 1,
+    "effects": [{ "trigger": "passive", "type": "modify_sector_environment_impact", "sector": "industry", "amount": 20 }],
+    "eventModifiers": { "heat_wave": 0.05, "forest_fires": 0.05 }, "victoryTags": [],
+    "rulesText": "Carta inicial. Acelera Industria y aumenta su impacto ambiental."
+  },
+  {
+    "id": "extractive_expansion", "name": "Expansion extractiva", "type": "action", "sector": "industry", "startingCard": false,
+    "cost": { "money": 1, "people": 0, "land": 0 }, "requires": ["livestock"], "arrows": 0,
+    "effects": [
+      { "trigger": "on_play", "type": "gain_resource", "resource": "money", "amount": 3 },
+      { "trigger": "on_play", "type": "add_deforestation", "amount": 120 }
+    ],
+    "eventModifiers": { "forest_fires": 0.05, "illegal_logging": 0.05 }, "victoryTags": [],
+    "rulesText": "Gana dinero rapido a cambio de aumentar mucho la deforestacion."
+  },
+  {
+    "id": "processing_plant", "name": "Planta de procesamiento", "type": "structure", "sector": "industry", "startingCard": false,
+    "cost": { "money": 2, "people": 0, "land": 1 }, "requires": ["territory_opening"], "arrows": 0,
+    "effects": [
+      { "trigger": "passive", "type": "modify_sector_production", "sector": "industry", "resource": "money", "amount": 1 },
+      { "trigger": "passive", "type": "modify_sector_environment_impact", "sector": "industry", "amount": 30 }
+    ],
+    "eventModifiers": { "heat_wave": 0.05, "food_conflict": 0.03 }, "victoryTags": [],
+    "rulesText": "Industria produce mas dinero, pero aumenta su impacto ambiental."
+  },
+  {
+    "id": "intensive_livestock", "name": "Ganaderia intensiva", "type": "structure", "sector": "industry", "startingCard": false,
+    "cost": { "money": 2, "people": 0, "land": 0 }, "requires": ["livestock"], "arrows": 1,
+    "effects": [], "eventModifiers": { "heat_wave": 0.03 }, "victoryTags": [],
+    "rulesText": "Acelera Industria y con ella sus beneficios e impactos."
+  },
+  {
+    "id": "solar_industry", "name": "Industria solar", "type": "structure", "sector": "industry", "startingCard": false,
+    "cost": { "money": 3, "people": 0, "land": 1 }, "requires": ["sustainable_infrastructure"], "arrows": 1,
+    "effects": [
+      { "trigger": "on_play", "type": "remove_deforestation", "amount": 40 },
+      { "trigger": "passive", "type": "modify_sector_environment_impact", "sector": "industry", "amount": -10 }
+    ],
+    "eventModifiers": { "heat_wave": -0.05, "forest_fires": -0.03 }, "victoryTags": ["sustainable_transition"],
+    "rulesText": "Acelera Industria y reduce su impacto ambiental."
+  },
+  {
+    "id": "energy_transition", "name": "Transicion energetica", "type": "project", "sector": "industry", "startingCard": false,
+    "cost": { "money": 4, "people": 2, "land": 0 }, "requires": ["solar_industry"], "arrows": 0,
+    "effects": [
+      { "trigger": "on_play", "type": "complete_project_flag", "route": "sustainable_transition", "flag": "energy_transition" },
+      { "trigger": "passive", "type": "modify_sector_environment_impact", "sector": "industry", "amount": -15 }
+    ],
+    "eventModifiers": { "heat_wave": -0.08, "forest_fires": -0.05 }, "victoryTags": ["sustainable_transition"],
+    "rulesText": "Proyecto clave para la ruta de Transicion sostenible."
+  },
+  {
+    "id": "circular_economy", "name": "Economia circular", "type": "structure", "sector": "industry", "startingCard": false,
+    "cost": { "money": 3, "people": 1, "land": 0 }, "requires": ["intensive_livestock"], "arrows": 0,
+    "effects": [{ "trigger": "on_sector_production", "type": "remove_deforestation", "sector": "industry", "amount": 20 }],
+    "eventModifiers": { "food_conflict": -0.03 }, "victoryTags": ["sustainable_transition"],
+    "rulesText": "Cada produccion industrial recupera parte del dano ambiental."
+  },
+  {
+    "id": "local_community", "name": "Comunidad local", "type": "structure", "sector": "population", "startingCard": false,
+    "cost": { "money": 1, "people": 0, "land": 0 }, "requires": [], "arrows": 1,
+    "effects": [], "eventModifiers": { "famine": -0.02 }, "victoryTags": [],
+    "rulesText": "Acelera Poblacion, que exige sostenimiento con mayor frecuencia."
+  },
+  {
+    "id": "local_economy", "name": "Economia local", "type": "structure", "sector": "population", "startingCard": false,
+    "cost": { "money": 2, "people": 1, "land": 0 }, "requires": ["local_community"], "arrows": 0,
+    "effects": [{ "trigger": "passive", "type": "modify_sector_production", "sector": "population", "resource": "money", "amount": 1 }],
+    "eventModifiers": { "famine": -0.05, "food_conflict": -0.03 }, "victoryTags": ["sustainable_transition"],
+    "rulesText": "Cuando Poblacion produce, tambien genera dinero."
+  },
+  {
+    "id": "community_health", "name": "Salud comunitaria", "type": "action", "sector": "population", "startingCard": false,
+    "cost": { "money": 1, "people": 0, "land": 0 }, "requires": ["sustainable_infrastructure"], "arrows": 0,
+    "effects": [
+      { "trigger": "on_play", "type": "remove_social_pressure", "amount": 1 },
+      { "trigger": "on_play", "type": "complete_project_flag", "route": "social_wellbeing", "flag": "community_health" }
+    ],
+    "eventModifiers": { "health_crisis": -0.05 }, "victoryTags": ["social_wellbeing"],
+    "rulesText": "Reduce presion social y deja un hito de Bienestar social."
+  },
+  {
+    "id": "environmental_education", "name": "Educacion ambiental", "type": "policy", "sector": "population", "startingCard": false,
+    "cost": { "money": 0, "people": 2, "land": 0 }, "requires": ["local_community"], "arrows": 0,
+    "effects": [], "eventModifiers": { "forest_fires": -0.05, "famine": -0.03 }, "victoryTags": ["restoration"],
+    "rulesText": "Reduce riesgos sociales y ambientales leves."
+  },
+  {
+    "id": "community_guard", "name": "Guardia comunitaria", "type": "structure", "sector": "population", "startingCard": false,
+    "cost": { "money": 0, "people": 2, "land": 1 }, "requires": ["territory_opening"], "arrows": 0,
+    "effects": [], "eventModifiers": { "illegal_logging": -0.08, "armed_conflict": -0.05 }, "victoryTags": ["restoration", "social_wellbeing"],
+    "rulesText": "Protege territorio y reduce tala ilegal y conflicto armado."
+  },
+  {
+    "id": "community_agreement", "name": "Acuerdo comunitario", "type": "project", "sector": "population", "startingCard": false,
+    "cost": { "money": 0, "people": 2, "land": 2 }, "requires": ["territory_opening", "local_community"], "arrows": 0,
+    "effects": [{ "trigger": "on_play", "type": "complete_project_flag", "route": "restoration", "flag": "community_agreement" }],
+    "eventModifiers": { "famine": -0.05, "armed_conflict": -0.05 }, "victoryTags": ["restoration"],
+    "rulesText": "Proyecto clave para la ruta de Restauracion del Amazonas."
+  },
+  {
+    "id": "territory_opening", "name": "Apertura territorial", "type": "action", "sector": "territory", "startingCard": false,
+    "cost": { "money": 1, "people": 0, "land": 0 }, "requires": [], "arrows": 0,
+    "effects": [
+      { "trigger": "on_play", "type": "activate_sector", "sector": "territory" },
+      { "trigger": "on_play", "type": "add_deforestation", "amount": 50 }
+    ],
+    "eventModifiers": { "illegal_logging": 0.05, "land_tenure_conflict": 0.05 }, "victoryTags": [],
+    "rulesText": "Activa Territorio, pero abre riesgo ambiental y territorial."
+  },
+  {
+    "id": "rural_cadastre", "name": "Catastro rural", "type": "policy", "sector": "territory", "startingCard": false,
+    "cost": { "money": 2, "people": 0, "land": 0 }, "requires": ["territory_opening"], "arrows": 0,
+    "effects": [], "eventModifiers": { "land_tenure_conflict": -0.08 }, "victoryTags": ["restoration"],
+    "rulesText": "Reduce tenencia ilegal y mejora el control del territorio."
+  },
+  {
+    "id": "satellite_monitoring", "name": "Monitoreo satelital", "type": "structure", "sector": "territory", "startingCard": false,
+    "cost": { "money": 2, "people": 1, "land": 0 }, "requires": ["territory_opening"], "arrows": 1,
+    "effects": [], "eventModifiers": { "illegal_logging": -0.08, "forest_fires": -0.03 }, "victoryTags": ["restoration"],
+    "rulesText": "Acelera Territorio y reduce tala ilegal."
+  },
+  {
+    "id": "collective_titling", "name": "Titulacion colectiva", "type": "project", "sector": "territory", "startingCard": false,
+    "cost": { "money": 0, "people": 2, "land": 2 }, "requires": ["rural_cadastre"], "arrows": 0,
+    "effects": [{ "trigger": "on_play", "type": "complete_project_flag", "route": "restoration", "flag": "collective_titling" }],
+    "eventModifiers": { "land_tenure_conflict": -0.10, "illegal_logging": -0.05 }, "victoryTags": ["restoration"],
+    "rulesText": "Proyecto territorial clave para Restauracion del Amazonas."
+  },
+  {
+    "id": "territorial_control", "name": "Control territorial", "type": "policy", "sector": "territory", "startingCard": false,
+    "cost": { "money": 2, "people": 1, "land": 0 }, "requires": ["territory_opening"], "arrows": 0,
+    "effects": [{ "trigger": "passive", "type": "block_event", "eventId": "land_tenure_conflict" }],
+    "eventModifiers": { "land_tenure_conflict": -0.15, "illegal_logging": -0.05 }, "victoryTags": [],
+    "rulesText": "Bloquea futuros eventos de tenencia ilegal."
+  },
+  {
+    "id": "sustainable_infrastructure", "name": "Infraestructura sostenible", "type": "structure", "sector": "territory", "startingCard": false,
+    "cost": { "money": 4, "people": 0, "land": 2 }, "requires": ["territory_opening"], "arrows": 0,
+    "effects": [{ "trigger": "passive", "type": "modify_sector_environment_impact", "sector": "territory", "amount": -5 }],
+    "eventModifiers": { "illegal_logging": -0.03 }, "victoryTags": ["restoration", "social_wellbeing"],
+    "rulesText": "Territorio produce sin aumentar deforestacion."
+  },
+  {
+    "id": "activate_ecosystems", "name": "Activar ecosistemas", "type": "action", "sector": "ecosystems", "startingCard": false,
+    "cost": { "money": 1, "people": 0, "land": 1 }, "requires": ["territory_opening"], "arrows": 0,
+    "effects": [{ "trigger": "on_play", "type": "activate_sector", "sector": "ecosystems" }],
+    "eventModifiers": { "heat_wave": -0.02 }, "victoryTags": ["restoration"],
+    "rulesText": "Activa el sector Ecosistemas."
+  },
+  {
+    "id": "restauracion_riberena", "name": "Restauracion riberena", "type": "structure", "sector": "ecosystems", "startingCard": false,
+    "cost": { "money": 0, "people": 1, "land": 1 }, "requires": ["activate_ecosystems"], "arrows": 0,
+    "effects": [{ "trigger": "on_sector_production", "type": "remove_deforestation", "sector": "ecosystems", "amount": 25 }],
+    "eventModifiers": { "heat_wave": -0.05, "forest_fires": -0.03 }, "victoryTags": ["restoration"],
+    "rulesText": "Ecosistemas reduce mas deforestacion al producir."
+  },
+  {
+    "id": "biodiversity_corridors", "name": "Corredores de biodiversidad", "type": "project", "sector": "ecosystems", "startingCard": false,
+    "cost": { "money": 0, "people": 2, "land": 2 }, "requires": ["restauracion_riberena"], "arrows": 0,
+    "effects": [
+      { "trigger": "on_play", "type": "complete_project_flag", "route": "restoration", "flag": "biodiversity_corridors" },
+      { "trigger": "on_play", "type": "remove_deforestation", "amount": 80 }
+    ],
+    "eventModifiers": { "pollinator_decline": -0.10, "fauna_extinction": -0.05 }, "victoryTags": ["restoration"],
+    "rulesText": "Protege biodiversidad y avanza Restauracion."
+  },
+  {
+    "id": "community_reforestation", "name": "Reforestacion comunitaria", "type": "action", "sector": "ecosystems", "startingCard": false,
+    "cost": { "money": 1, "people": 2, "land": 0 }, "requires": ["activate_ecosystems"], "arrows": 0,
+    "effects": [{ "trigger": "on_play", "type": "remove_deforestation", "amount": 120 }],
+    "eventModifiers": { "forest_fires": -0.05 }, "victoryTags": ["restoration"],
+    "rulesText": "Reduce deforestacion inmediatamente."
+  },
+  {
+    "id": "amazon_bioeconomy", "name": "Bioeconomia amazonica", "type": "structure", "sector": "ecosystems", "startingCard": false,
+    "cost": { "money": 2, "people": 0, "land": 1 }, "requires": ["activate_ecosystems"], "arrows": 0,
+    "effects": [{ "trigger": "passive", "type": "modify_sector_production", "sector": "ecosystems", "resource": "money", "amount": 1 }],
+    "eventModifiers": { "food_conflict": -0.03 }, "victoryTags": ["sustainable_transition", "restoration"],
+    "rulesText": "Ecosistemas produce dinero limpio adicional."
+  },
+  {
+    "id": "pollinator_protection", "name": "Proteccion de polinizadores", "type": "policy", "sector": "ecosystems", "startingCard": false,
+    "cost": { "money": 0, "people": 2, "land": 1 }, "requires": ["activate_ecosystems"], "arrows": 0,
+    "effects": [{ "trigger": "passive", "type": "block_event", "eventId": "pollinator_decline" }],
+    "eventModifiers": { "pollinator_decline": -0.15, "food_conflict": -0.03 }, "victoryTags": ["restoration"],
+    "rulesText": "Bloquea futuros eventos de declive de polinizadores."
+  },
+  {
+    "id": "integral_reserve", "name": "Reserva integral", "type": "project", "sector": "ecosystems", "startingCard": false,
+    "cost": { "money": 0, "people": 2, "land": 3 }, "requires": ["biodiversity_corridors"], "arrows": 0,
+    "effects": [
+      { "trigger": "on_play", "type": "complete_project_flag", "route": "restoration", "flag": "integral_reserve" },
+      { "trigger": "on_play", "type": "remove_deforestation", "amount": 150 },
+      { "trigger": "passive", "type": "block_event", "eventId": "forest_fires" }
+    ],
+    "eventModifiers": { "forest_fires": -0.08, "fauna_extinction": -0.05 }, "victoryTags": ["restoration"],
+    "rulesText": "Proyecto fuerte de restauracion que bloquea eventos ambientales menores."
+  },
+  {
+    "id": "citizen_oversight", "name": "Veeduria ciudadana", "type": "policy", "sector": "global", "startingCard": false,
+    "cost": { "money": 0, "people": 2, "land": 0 }, "requires": [], "arrows": 0,
+    "effects": [{ "trigger": "passive", "type": "block_event", "eventId": "corruption" }],
+    "eventModifiers": { "corruption": -0.15 }, "victoryTags": [],
+    "rulesText": "Bloquea futuros eventos de corrupcion."
+  },
+  {
+    "id": "peace_agreements", "name": "Acuerdos de paz", "type": "policy", "sector": "global", "startingCard": false,
+    "cost": { "money": 2, "people": 2, "land": 0 }, "requires": ["local_community"], "arrows": 0,
+    "effects": [{ "trigger": "passive", "type": "block_event", "eventId": "armed_conflict" }],
+    "eventModifiers": { "armed_conflict": -0.15, "land_tenure_conflict": -0.03 }, "victoryTags": ["social_wellbeing"],
+    "rulesText": "Bloquea futuros eventos de conflicto armado."
+  },
+  {
+    "id": "amazon_governance", "name": "Gobernanza amazonica", "type": "project", "sector": "global", "startingCard": false,
+    "cost": { "money": 3, "people": 2, "land": 1 }, "requires": ["citizen_oversight", "territorial_control"], "arrows": 0,
+    "effects": [
+      { "trigger": "on_play", "type": "complete_project_flag", "route": "sustainable_transition", "flag": "amazon_governance" },
+      { "trigger": "passive", "type": "block_event_category", "category": "bad_governance" }
+    ],
+    "eventModifiers": { "corruption": -0.10, "armed_conflict": -0.10, "land_tenure_conflict": -0.10 },
+    "victoryTags": ["sustainable_transition", "social_wellbeing"],
+    "rulesText": "Reduce mal gobierno y aporta a Transicion sostenible y Bienestar social."
+  },
+  {
+    "id": "restoration_fund", "name": "Fondo de restauracion", "type": "policy", "sector": "global", "startingCard": false,
+    "cost": { "money": 3, "people": 0, "land": 0 }, "requires": ["activate_ecosystems"], "arrows": 0,
+    "effects": [{ "trigger": "passive", "type": "modify_sector_environment_impact", "sector": "ecosystems", "amount": -20 }],
+    "eventModifiers": { "heat_wave": -0.05, "forest_fires": -0.05 }, "victoryTags": ["restoration"],
+    "rulesText": "Cada produccion de Ecosistemas reduce deforestacion adicional."
+  }
+]

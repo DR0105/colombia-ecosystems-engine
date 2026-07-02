@@ -1,0 +1,38 @@
+[
+  {
+    "id": "industry",
+    "name": "Industria",
+    "initiallyActive": true,
+    "cycleTarget": 4,
+    "baseAdvance": 1,
+    "production": { "money": 1, "people": 0, "land": 0 },
+    "environmentImpact": 0
+  },
+  {
+    "id": "population",
+    "name": "Poblacion",
+    "initiallyActive": true,
+    "cycleTarget": 5,
+    "baseAdvance": 1,
+    "production": { "money": 0, "people": 1, "land": 0 },
+    "environmentImpact": 0
+  },
+  {
+    "id": "territory",
+    "name": "Territorio",
+    "initiallyActive": false,
+    "cycleTarget": 6,
+    "baseAdvance": 1,
+    "production": { "money": 0, "people": 0, "land": 1 },
+    "environmentImpact": 5
+  },
+  {
+    "id": "ecosystems",
+    "name": "Ecosistemas",
+    "initiallyActive": false,
+    "cycleTarget": 6,
+    "baseAdvance": 1,
+    "production": { "money": 1, "people": 0, "land": 0 },
+    "environmentImpact": -15
+  }
+]

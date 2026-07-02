@@ -1,0 +1,13 @@
+{
+  "id": "amazonas_mvp",
+  "name": "Amazonas",
+  "schemaVersion": 1,
+  "initialResources": { "money": 2, "people": 1, "land": 0 },
+  "initialDeforestation": 340,
+  "initialHandSize": 5,
+  "handLimit": 7,
+  "drawPerRound": 1,
+  "maxActiveEvents": 3,
+  "badGovernanceRoundInterval": 16,
+  "maxEffectiveArrows": 4
+}
