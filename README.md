@@ -80,6 +80,7 @@ go tool cover -func=/tmp/amazonas-coverage.out
 - `persistence`: guardado atomico y carga validada.
 - `cmd/amazonas`: consola interactiva.
 - `assets`: contenido del escenario Amazonas.
+- `docs/api`: contrato OpenAPI y Swagger UI embebidos.
 
 El frontend futuro debe enviar comandos al motor y renderizar el `GameState` devuelto. Las reglas no deben duplicarse en la interfaz.
 

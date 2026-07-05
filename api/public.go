@@ -1,12 +1,10 @@
 package api
 
 import (
-	"embed"
 	"net/http"
-)
 
-//go:embed openapi.yaml swagger.html
-var documentation embed.FS
+	apidocs "github.com/josephsae/colombia-ecosystems-engine/docs/api"
+)
 
 func (s *Server) getCatalog(w http.ResponseWriter, _ *http.Request) {
 	s.writeJSON(w, http.StatusOK, catalogResponse(s.catalog))
@@ -44,9 +42,8 @@ func (s *Server) swaggerUI(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/docs/", http.StatusPermanentRedirect)
 		return
 	}
-	data, _ := documentation.ReadFile("swagger.html")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = w.Write(data)
+	_, _ = w.Write(apidocs.SwaggerHTML())
 }
 
 func (s *Server) notFound(w http.ResponseWriter, r *http.Request) {
@@ -54,6 +51,5 @@ func (s *Server) notFound(w http.ResponseWriter, r *http.Request) {
 }
 
 func OpenAPISpec() []byte {
-	data, _ := documentation.ReadFile("openapi.yaml")
-	return data
+	return apidocs.OpenAPI()
 }
