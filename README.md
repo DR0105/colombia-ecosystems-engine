@@ -49,11 +49,13 @@ go build -o bin/amazonas ./cmd/amazonas
 ## Verificar
 
 ```bash
-go fmt ./...
-go vet ./...
-go test ./...
-go test -race ./...
+make fmt
+make vet
+make test
+make race
 ```
+
+El `Makefile` usa el enlazador del sistema en macOS para mantener compatibilidad con Go 1.22.5 en versiones recientes del sistema operativo.
 
 La suite incluye:
 
@@ -80,3 +82,47 @@ go tool cover -func=/tmp/amazonas-coverage.out
 - `assets`: contenido del escenario Amazonas.
 
 El frontend futuro debe enviar comandos al motor y renderizar el `GameState` devuelto. Las reglas no deben duplicarse en la interfaz.
+
+## API HTTP
+
+Configura un secreto local y ejecuta:
+
+```bash
+export JWT_SECRET="replace-this-with-at-least-32-random-bytes"
+make build-api
+./bin/api
+```
+
+Recursos locales:
+
+- API: `http://localhost:8080`
+- Swagger UI: `http://localhost:8080/docs/`
+- OpenAPI: `http://localhost:8080/openapi.yaml`
+- Readiness: `http://localhost:8080/health/ready`
+
+Crear una sesion de invitado:
+
+```bash
+curl -i -c /tmp/amazonas-cookies.txt \
+  -X POST http://localhost:8080/api/v1/sessions/guest
+```
+
+La respuesta contiene `accessToken`. Usalo para crear una partida:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/games \
+  -H "Authorization: Bearer ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"seed":42}'
+```
+
+Aplicar un comando:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/games/GAME_ID/commands \
+  -H "Authorization: Bearer ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"end_turn","expectedVersion":1}'
+```
+
+La API devuelve una vista publica: no expone la semilla interna, el orden del mazo, cooldowns ni eventos en cola.

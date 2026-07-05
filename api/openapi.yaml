@@ -1,0 +1,583 @@
+openapi: 3.0.3
+info:
+  title: Colombia Ecosystems Game API
+  version: 1.0.0
+  description: API REST para crear y jugar partidas del motor de ecosistemas de Colombia.
+servers:
+  - url: /
+    description: Mismo host que sirve Swagger UI
+tags:
+  - name: Sessions
+  - name: Games
+  - name: Catalog
+  - name: Operations
+paths:
+  /api/v1/sessions/guest:
+    post:
+      tags: [Sessions]
+      summary: Crear una sesion de invitado
+      operationId: createGuestSession
+      responses:
+        "201":
+          description: Sesion creada; tambien establece la cookie HttpOnly amazonas_refresh.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionResponse" }
+              example:
+                guestId: guest_0123456789abcdef0123456789abcdef
+                sessionId: session_0123456789abcdef0123456789abcdef
+                accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                tokenType: Bearer
+                accessExpiresAt: "2026-07-01T21:15:00Z"
+                refreshExpiresAt: "2026-07-31T21:00:00Z"
+        "500": { $ref: "#/components/responses/InternalError" }
+  /api/v1/sessions/refresh:
+    post:
+      tags: [Sessions]
+      summary: Renovar la sesion y rotar el refresh token
+      operationId: refreshGuestSession
+      security:
+        - RefreshCookie: []
+      responses:
+        "200":
+          description: Sesion renovada y cookie rotada.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /api/v1/sessions/current:
+    get:
+      tags: [Sessions]
+      summary: Consultar la sesion actual
+      operationId: getCurrentSession
+      security: [{ BearerAuth: [] }]
+      responses:
+        "200":
+          description: Sesion valida.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurrentSessionResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [Sessions]
+      summary: Revocar la sesion actual
+      operationId: deleteCurrentSession
+      security: [{ BearerAuth: [] }]
+      responses:
+        "204": { description: Sesion revocada y cookie eliminada. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /api/v1/games:
+    post:
+      tags: [Games]
+      summary: Crear una partida
+      operationId: createGame
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateGameRequest" }
+            examples:
+              random: { value: {} }
+              reproducible: { value: { seed: 42 } }
+      responses:
+        "201":
+          description: Partida creada.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GameResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    get:
+      tags: [Games]
+      summary: Listar partidas propias
+      operationId: listGames
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: cursor
+          in: query
+          schema: { type: string, pattern: "^game_[a-f0-9]{32}$" }
+      responses:
+        "200":
+          description: Pagina de partidas ordenada por actualizacion descendente.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListGamesResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /api/v1/games/{gameId}:
+    parameters:
+      - $ref: "#/components/parameters/GameID"
+    get:
+      tags: [Games]
+      summary: Consultar una partida
+      operationId: getGame
+      security: [{ BearerAuth: [] }]
+      responses:
+        "200":
+          description: Estado publico de la partida.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GameResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+    delete:
+      tags: [Games]
+      summary: Eliminar una partida
+      operationId: deleteGame
+      security: [{ BearerAuth: [] }]
+      responses:
+        "204": { description: Partida eliminada. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /api/v1/games/{gameId}/commands:
+    parameters:
+      - $ref: "#/components/parameters/GameID"
+    post:
+      tags: [Games]
+      summary: Aplicar un comando a la partida
+      description: El comando se aplica una sola vez si expectedVersion coincide con la version persistida.
+      operationId: applyGameCommand
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommandRequest" }
+            examples:
+              playCard:
+                value: { type: play_card, cardId: extractive_expansion, expectedVersion: 1 }
+              resolveEvent:
+                value: { type: resolve_event, eventId: heat_wave, expectedVersion: 2 }
+              discardCard:
+                value: { type: discard_card, cardId: community_health, expectedVersion: 3 }
+              endTurn:
+                value: { type: end_turn, expectedVersion: 4 }
+      responses:
+        "200":
+          description: Comando aplicado; incluye estado, nueva version y eventos de dominio.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GameResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "413": { $ref: "#/components/responses/PayloadTooLarge" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /api/v1/catalog:
+    get:
+      tags: [Catalog]
+      summary: Obtener todo el catalogo jugable
+      operationId: getCatalog
+      responses:
+        "200":
+          description: Escenario, cartas, sectores, eventos, tipping points y victorias.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CatalogResponse" }
+        "500": { $ref: "#/components/responses/InternalError" }
+  /api/v1/catalog/cards/{cardId}:
+    get:
+      tags: [Catalog]
+      summary: Consultar una carta por ID
+      operationId: getCard
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Definicion de carta.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CardDefinition" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /health/live:
+    get:
+      tags: [Operations]
+      summary: Liveness
+      operationId: live
+      responses:
+        "200":
+          description: Proceso activo.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResponse" }
+  /health/ready:
+    get:
+      tags: [Operations]
+      summary: Readiness
+      operationId: ready
+      responses:
+        "200":
+          description: Servicio listo.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResponse" }
+        "503": { $ref: "#/components/responses/NotReady" }
+  /openapi.yaml:
+    get:
+      tags: [Operations]
+      summary: Descargar OpenAPI
+      operationId: openAPISpec
+      responses:
+        "200":
+          description: Contrato OpenAPI 3.0.3.
+          content:
+            application/yaml:
+              schema: { type: string }
+  /docs/:
+    get:
+      tags: [Operations]
+      summary: Swagger UI
+      operationId: swaggerUI
+      responses:
+        "200":
+          description: Interfaz HTML de Swagger.
+          content:
+            text/html:
+              schema: { type: string }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    RefreshCookie:
+      type: apiKey
+      in: cookie
+      name: amazonas_refresh
+  parameters:
+    GameID:
+      name: gameId
+      in: path
+      required: true
+      schema: { type: string, pattern: "^game_[a-f0-9]{32}$" }
+  responses:
+    BadRequest:
+      description: JSON, parametros o comando invalidos.
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    Unauthorized:
+      description: Token ausente, invalido o expirado.
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    Forbidden:
+      description: Origen o recurso no autorizado.
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    NotFound:
+      description: Recurso inexistente.
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    Conflict:
+      description: Conflicto de version o regla del juego.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          examples:
+            version:
+              value:
+                error:
+                  code: VERSION_CONFLICT
+                  message: La partida fue modificada por otra solicitud.
+                  requestId: req_0123456789abcdef0123456789abcdef
+                  details: { currentVersion: 2 }
+    PayloadTooLarge:
+      description: El cuerpo supera 1 MiB.
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    UnsupportedMediaType:
+      description: Content-Type distinto de application/json.
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    InternalError:
+      description: Error interno no esperado.
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+    NotReady:
+      description: El servicio no puede atender trafico.
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } }
+  schemas:
+    SessionResponse:
+      type: object
+      required: [guestId, sessionId, accessToken, tokenType, accessExpiresAt, refreshExpiresAt]
+      properties:
+        guestId: { type: string }
+        sessionId: { type: string }
+        accessToken: { type: string }
+        tokenType: { type: string, enum: [Bearer] }
+        accessExpiresAt: { type: string, format: date-time }
+        refreshExpiresAt: { type: string, format: date-time }
+    CurrentSessionResponse:
+      type: object
+      required: [guestId, sessionId, expiresAt]
+      properties:
+        guestId: { type: string }
+        sessionId: { type: string }
+        expiresAt: { type: string, format: date-time }
+    CreateGameRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        seed: { type: integer, format: uint64, minimum: 0 }
+    CommandRequest:
+      type: object
+      additionalProperties: false
+      required: [type, expectedVersion]
+      properties:
+        type: { type: string, enum: [play_card, resolve_event, discard_card, end_turn] }
+        cardId: { type: string }
+        eventId: { type: string }
+        expectedVersion: { type: integer, format: uint64, minimum: 1 }
+    GameResponse:
+      type: object
+      required: [id, version, createdAt, updatedAt, state, availableActions]
+      properties:
+        id: { type: string }
+        version: { type: integer, format: uint64 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        state: { $ref: "#/components/schemas/GameView" }
+        availableActions: { $ref: "#/components/schemas/AvailableActions" }
+        domainEvents:
+          type: array
+          items: { $ref: "#/components/schemas/DomainEvent" }
+    GameView:
+      type: object
+      required: [schemaVersion, scenarioId, round, phase, resources, environment, sectors, cards, events, socialPressure, victory, defeat]
+      properties:
+        schemaVersion: { type: integer }
+        scenarioId: { type: string }
+        round: { type: integer, minimum: 0 }
+        phase: { type: string, enum: [decision, discard_required, finished] }
+        resources: { $ref: "#/components/schemas/Resources" }
+        environment: { $ref: "#/components/schemas/EnvironmentState" }
+        sectors:
+          type: object
+          additionalProperties: { $ref: "#/components/schemas/SectorState" }
+        cards: { $ref: "#/components/schemas/CardZonesView" }
+        events: { $ref: "#/components/schemas/EventStateView" }
+        socialPressure: { type: integer, minimum: 0 }
+        victory: { $ref: "#/components/schemas/VictoryState" }
+        defeat: { $ref: "#/components/schemas/DefeatState" }
+    Resources:
+      type: object
+      required: [money, people, land]
+      properties:
+        money: { type: integer, minimum: 0 }
+        people: { type: integer, minimum: 0 }
+        land: { type: integer, minimum: 0 }
+    EnvironmentState:
+      type: object
+      required: [deforestation, temperatureLabel, tippingPointsCrossed]
+      properties:
+        deforestation: { type: integer, minimum: 0 }
+        temperatureLabel: { type: string }
+        tippingPointsCrossed: { type: array, items: { type: integer } }
+    SectorState:
+      type: object
+      required: [active, cycleProgress, activeCards]
+      properties:
+        active: { type: boolean }
+        cycleProgress: { type: integer, minimum: 0 }
+        activeCards: { type: array, items: { type: string } }
+    CardZonesView:
+      type: object
+      required: [hand, deckCount, discard, policies, projects, milestones]
+      properties:
+        hand: { type: array, items: { type: string } }
+        deckCount: { type: integer, minimum: 0 }
+        discard: { type: array, items: { type: string } }
+        policies: { type: array, items: { type: string } }
+        projects: { type: array, items: { type: string } }
+        milestones: { type: object, additionalProperties: { type: boolean } }
+    EventStateView:
+      type: object
+      required: [active, resolved, queuedCount, territorialFailures]
+      properties:
+        active:
+          type: array
+          items: { $ref: "#/components/schemas/ActiveEvent" }
+        resolved: { type: array, items: { type: string } }
+        queuedCount: { type: integer, minimum: 0 }
+        territorialFailures: { type: integer, minimum: 0 }
+    ActiveEvent:
+      type: object
+      required: [id, roundsRemaining]
+      properties:
+        id: { type: string }
+        roundsRemaining: { type: integer }
+    VictoryState:
+      type: object
+      required: [completed]
+      properties:
+        completed: { type: boolean }
+        route: { type: string }
+    DefeatState:
+      type: object
+      required: [gameOver]
+      properties:
+        gameOver: { type: boolean }
+        reason: { type: string }
+    AvailableActions:
+      type: object
+      required: [cards, events, discards, canEndTurn]
+      properties:
+        cards: { type: object, additionalProperties: { $ref: "#/components/schemas/ActionAvailability" } }
+        events: { type: object, additionalProperties: { $ref: "#/components/schemas/ActionAvailability" } }
+        discards: { type: object, additionalProperties: { $ref: "#/components/schemas/ActionAvailability" } }
+        canEndTurn: { $ref: "#/components/schemas/ActionAvailability" }
+    ActionAvailability:
+      type: object
+      required: [allowed]
+      properties:
+        allowed: { type: boolean }
+        code: { type: string }
+        message: { type: string }
+    DomainEvent:
+      type: object
+      required: [type, message]
+      properties:
+        type: { type: string }
+        message: { type: string }
+        data: { type: object, additionalProperties: true }
+    GameSummary:
+      type: object
+      required: [id, version, round, phase, victory, defeat, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        version: { type: integer, format: uint64 }
+        round: { type: integer }
+        phase: { type: string }
+        victory: { $ref: "#/components/schemas/VictoryState" }
+        defeat: { $ref: "#/components/schemas/DefeatState" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ListGamesResponse:
+      type: object
+      required: [games]
+      properties:
+        games: { type: array, items: { $ref: "#/components/schemas/GameSummary" } }
+        nextCursor: { type: string }
+    CatalogResponse:
+      type: object
+      required: [scenario, cards, sectors, events, tippingPoints, victoryRoutes]
+      properties:
+        scenario: { $ref: "#/components/schemas/Scenario" }
+        cards: { type: array, items: { $ref: "#/components/schemas/CardDefinition" } }
+        sectors: { type: array, items: { $ref: "#/components/schemas/SectorDefinition" } }
+        events: { type: array, items: { $ref: "#/components/schemas/EventDefinition" } }
+        tippingPoints: { type: array, items: { $ref: "#/components/schemas/TippingPoint" } }
+        victoryRoutes: { type: array, items: { $ref: "#/components/schemas/VictoryRoute" } }
+    Scenario:
+      type: object
+      additionalProperties: true
+      required: [id, name, schemaVersion]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        schemaVersion: { type: integer }
+    CardDefinition:
+      type: object
+      required: [id, name, type, sector, startingCard, cost, requires, arrows, effects, eventModifiers, victoryTags, rulesText]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string, enum: [action, structure, policy, project] }
+        sector: { type: string }
+        startingCard: { type: boolean }
+        cost: { $ref: "#/components/schemas/Resources" }
+        requires: { type: array, items: { type: string } }
+        arrows: { type: integer }
+        effects: { type: array, items: { $ref: "#/components/schemas/Effect" } }
+        eventModifiers: { type: object, additionalProperties: { type: number, format: double } }
+        victoryTags: { type: array, items: { type: string } }
+        rulesText: { type: string }
+    Effect:
+      type: object
+      required: [trigger, type]
+      properties:
+        trigger: { type: string, enum: [on_play, on_sector_production, passive] }
+        type: { type: string }
+        resource: { type: string }
+        sector: { type: string }
+        amount: { type: integer }
+        eventId: { type: string }
+        category: { type: string }
+        route: { type: string }
+        flag: { type: string }
+        reason: { type: string }
+    SectorDefinition:
+      type: object
+      additionalProperties: true
+      required: [id, name, initiallyActive, cycleTarget, baseAdvance, production, environmentImpact]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        initiallyActive: { type: boolean }
+        cycleTarget: { type: integer }
+        baseAdvance: { type: integer }
+        production: { $ref: "#/components/schemas/Resources" }
+        environmentImpact: { type: integer }
+    EventDefinition:
+      type: object
+      additionalProperties: true
+      required: [id, name, category, initialRounds, solution]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        category: { type: string }
+        initialRounds: { type: integer }
+        solution: { $ref: "#/components/schemas/Resources" }
+    TippingPoint:
+      type: object
+      required: [threshold, eventId]
+      properties:
+        threshold: { type: integer }
+        eventId: { type: string }
+    VictoryRoute:
+      type: object
+      additionalProperties: true
+      required: [id, name, requiredCards, minCards]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        requiredCards: { type: array, items: { type: string } }
+        minCards: { type: integer }
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [ok, ready] }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            requestId: { type: string }
+            details: { type: object, additionalProperties: true }

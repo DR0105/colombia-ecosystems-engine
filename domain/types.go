@@ -268,6 +268,19 @@ type Result struct {
 	Events []DomainEvent `json:"events"`
 }
 
+type ActionAvailability struct {
+	Allowed bool   `json:"allowed"`
+	Code    string `json:"code,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+
+type AvailableActions struct {
+	Cards      map[string]ActionAvailability `json:"cards"`
+	Events     map[string]ActionAvailability `json:"events"`
+	Discards   map[string]ActionAvailability `json:"discards"`
+	CanEndTurn ActionAvailability            `json:"canEndTurn"`
+}
+
 type NewGameOptions struct {
 	Seed uint64
 }
