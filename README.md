@@ -101,6 +101,15 @@ Recursos locales:
 - OpenAPI: `http://localhost:8080/openapi.yaml`
 - Readiness: `http://localhost:8080/health/ready`
 
+La coleccion importable de Postman esta en
+`docs/postman/colombia-ecosystems-api.postman_collection.json`. Incluye un flujo
+completo de sesion, catalogo, partida, comandos y limpieza; la variable
+`baseUrl` puede ajustarse al puerto donde se ejecute la API. En entornos donde
+el puerto 8080 este ocupado, use por ejemplo `http://localhost:8081`.
+
+La referencia campo por campo para implementar un cliente web esta en
+`docs/guia-integracion-frontend.md`.
+
 Crear una sesion de invitado:
 
 ```bash

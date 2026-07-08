@@ -1,0 +1,268 @@
+{
+  "info": {
+    "_postman_id": "132a791d-268c-4d04-8fd2-a0ec932417d8",
+    "name": "Colombia Ecosystems Game API",
+    "description": "Coleccion para verificar la API HTTP del motor. Ejecute las carpetas en orden. La coleccion conserva automaticamente la sesion, el ID de partida y la version esperada.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test(\"La respuesta incluye X-Request-ID\", function () {",
+          "    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.be.a(\"string\").and.not.empty;",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8081", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "gameId", "value": "", "type": "string" },
+    { "key": "expectedVersion", "value": "1", "type": "string" },
+    { "key": "cardId", "value": "livestock", "type": "string" },
+    { "key": "playableCardId", "value": "", "type": "string" },
+    { "key": "discardCardId", "value": "", "type": "string" },
+    { "key": "eventId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "01 - Operaciones",
+      "item": [
+        {
+          "name": "Liveness",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health/live",
+            "description": "Confirma que el proceso HTTP esta activo. Respuesta esperada: 200."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Liveness responde 200\", () => pm.response.to.have.status(200));", "pm.test(\"Estado ok\", () => pm.expect(pm.response.json().status).to.eql(\"ok\"));"] } }]
+        },
+        {
+          "name": "Readiness",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health/ready",
+            "description": "Confirma que el servicio puede atender trafico. Respuestas documentadas: 200 y 503."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Readiness responde 200\", () => pm.response.to.have.status(200));", "pm.test(\"Estado ready\", () => pm.expect(pm.response.json().status).to.eql(\"ready\"));"] } }]
+        },
+        {
+          "name": "Descargar OpenAPI",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/openapi.yaml",
+            "description": "Descarga el contrato OpenAPI 3.0.3. Respuesta esperada: 200."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"OpenAPI responde 200\", () => pm.response.to.have.status(200));", "pm.test(\"Contenido OpenAPI\", () => pm.expect(pm.response.text()).to.include(\"openapi: 3.0.3\"));"] } }]
+        },
+        {
+          "name": "Abrir Swagger UI",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/docs/",
+            "description": "Comprueba que la interfaz web de Swagger esta disponible. Respuesta esperada: 200."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Swagger UI responde 200\", () => pm.response.to.have.status(200));", "pm.test(\"Contenido HTML\", () => pm.expect(pm.response.text()).to.include(\"SwaggerUIBundle\"));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "02 - Sesion",
+      "item": [
+        {
+          "name": "Crear sesion de invitado",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/sessions/guest",
+            "description": "Crea una sesion, guarda el JWT en accessToken y recibe amazonas_refresh en el cookie jar de Postman. Respuestas documentadas: 201 y 500."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Sesion creada\", () => pm.response.to.have.status(201));", "const body = pm.response.json();", "pm.expect(body.accessToken).to.be.a(\"string\").and.not.empty;", "pm.collectionVariables.set(\"accessToken\", body.accessToken);"] } }]
+        },
+        {
+          "name": "Consultar sesion actual",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/sessions/current",
+            "description": "Valida el access token. Respuestas documentadas: 200 y 401."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Sesion valida\", () => pm.response.to.have.status(200));", "pm.test(\"Incluye identificadores\", () => { const body = pm.response.json(); pm.expect(body.guestId).to.be.a(\"string\"); pm.expect(body.sessionId).to.be.a(\"string\"); });"] } }]
+        },
+        {
+          "name": "Renovar sesion",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/sessions/refresh",
+            "description": "Usa automaticamente la cookie amazonas_refresh y rota tanto la cookie como el JWT. Respuestas documentadas: 200, 401, 403 y 500."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Sesion renovada\", () => pm.response.to.have.status(200));", "const body = pm.response.json();", "pm.collectionVariables.set(\"accessToken\", body.accessToken);"] } }]
+        }
+      ]
+    },
+    {
+      "name": "03 - Catalogo",
+      "item": [
+        {
+          "name": "Obtener catalogo",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/catalog",
+            "description": "Obtiene escenario, cartas, sectores, eventos, tipping points y rutas de victoria. Respuestas documentadas: 200 y 500."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Catalogo disponible\", () => pm.response.to.have.status(200));", "pm.test(\"Contiene 30 cartas\", () => pm.expect(pm.response.json().cards).to.have.lengthOf(30));"] } }]
+        },
+        {
+          "name": "Consultar carta",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/catalog/cards/{{cardId}}",
+            "description": "Consulta la definicion de cardId. Respuestas documentadas: 200 y 404."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Carta encontrada\", () => pm.response.to.have.status(200));", "pm.test(\"ID coincide\", () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"cardId\")));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "04 - Partida basica",
+      "item": [
+        {
+          "name": "Crear partida reproducible",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"seed\": 42\n}" },
+            "url": "{{baseUrl}}/api/v1/games",
+            "description": "Crea una partida con semilla fija y guarda gameId, expectedVersion y acciones disponibles. Respuestas documentadas: 201, 400, 401, 409, 413, 415 y 500."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Partida creada\", () => pm.response.to.have.status(201));", "const body = pm.response.json();", "pm.collectionVariables.set(\"gameId\", body.id);", "pm.collectionVariables.set(\"expectedVersion\", String(body.version));", "const playable = Object.entries(body.availableActions.cards || {}).find(([, value]) => value.allowed);", "if (playable) pm.collectionVariables.set(\"playableCardId\", playable[0]);", "const discardable = Object.entries(body.availableActions.discards || {}).find(([, value]) => value.allowed);", "if (discardable) pm.collectionVariables.set(\"discardCardId\", discardable[0]);", "const resolvable = Object.entries(body.availableActions.events || {}).find(([, value]) => value.allowed);", "if (resolvable) pm.collectionVariables.set(\"eventId\", resolvable[0]);"] } }]
+        },
+        {
+          "name": "Consultar partida",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/games/{{gameId}}",
+            "description": "Obtiene el estado publico y las acciones disponibles. Respuestas documentadas: 200, 401, 403, 404 y 500."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Partida encontrada\", () => pm.response.to.have.status(200));", "const body = pm.response.json();", "pm.collectionVariables.set(\"expectedVersion\", String(body.version));"] } }]
+        },
+        {
+          "name": "Avanzar ronda",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"type\": \"end_turn\",\n  \"expectedVersion\": {{expectedVersion}}\n}" },
+            "url": "{{baseUrl}}/api/v1/games/{{gameId}}/commands",
+            "description": "Finaliza el turno actual y actualiza expectedVersion. Respuestas documentadas: 200, 400, 401, 403, 404, 409, 413, 415 y 500."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Turno aplicado\", () => pm.response.to.have.status(200));", "const body = pm.response.json();", "pm.collectionVariables.set(\"expectedVersion\", String(body.version));", "pm.test(\"Version avanzo\", () => pm.expect(body.version).to.be.above(1));"] } }]
+        },
+        {
+          "name": "Listar partidas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/games?limit=20", "host": ["{{baseUrl}}"], "path": ["api", "v1", "games"], "query": [{ "key": "limit", "value": "20" }] },
+            "description": "Lista las partidas propias con paginacion por cursor. Respuestas documentadas: 200, 400, 401 y 500."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Listado disponible\", () => pm.response.to.have.status(200));", "pm.test(\"Incluye la partida creada\", () => { const ids = pm.response.json().games.map(game => game.id); pm.expect(ids).to.include(pm.collectionVariables.get(\"gameId\")); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "05 - Comandos opcionales",
+      "description": "Ejecute cada solicitud solo cuando su variable asociada tenga valor y availableActions indique allowed=true. Cada comando modifica la version de la partida.",
+      "item": [
+        {
+          "name": "Jugar carta disponible",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"type\": \"play_card\",\n  \"cardId\": \"{{playableCardId}}\",\n  \"expectedVersion\": {{expectedVersion}}\n}" },
+            "url": "{{baseUrl}}/api/v1/games/{{gameId}}/commands",
+            "description": "Juega la primera carta permitida detectada. Puede responder 409 si el estado actual ya no permite esa carta."
+          },
+          "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["if (!pm.collectionVariables.get(\"playableCardId\")) { throw new Error(\"No hay una carta jugable guardada; consulte la partida y revise availableActions.cards.\"); }"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Carta jugada\", () => pm.response.to.have.status(200));", "if (pm.response.code === 200) pm.collectionVariables.set(\"expectedVersion\", String(pm.response.json().version));"] } }]
+        },
+        {
+          "name": "Resolver evento disponible",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"type\": \"resolve_event\",\n  \"eventId\": \"{{eventId}}\",\n  \"expectedVersion\": {{expectedVersion}}\n}" },
+            "url": "{{baseUrl}}/api/v1/games/{{gameId}}/commands",
+            "description": "Resuelve un evento permitido. Requiere que eventId se haya obtenido de availableActions.events."
+          },
+          "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["if (!pm.collectionVariables.get(\"eventId\")) { throw new Error(\"No hay un evento resoluble en el estado actual.\"); }"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Evento resuelto\", () => pm.response.to.have.status(200));", "if (pm.response.code === 200) pm.collectionVariables.set(\"expectedVersion\", String(pm.response.json().version));"] } }]
+        },
+        {
+          "name": "Descartar carta requerida",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"type\": \"discard_card\",\n  \"cardId\": \"{{discardCardId}}\",\n  \"expectedVersion\": {{expectedVersion}}\n}" },
+            "url": "{{baseUrl}}/api/v1/games/{{gameId}}/commands",
+            "description": "Descarta una carta cuando la fase sea discard_required."
+          },
+          "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["if (!pm.collectionVariables.get(\"discardCardId\")) { throw new Error(\"No hay descarte permitido en el estado actual.\"); }"] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Carta descartada\", () => pm.response.to.have.status(200));", "if (pm.response.code === 200) pm.collectionVariables.set(\"expectedVersion\", String(pm.response.json().version));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "06 - Limpieza",
+      "description": "Ejecute esta carpeta al final: elimina la partida y revoca la sesion.",
+      "item": [
+        {
+          "name": "Eliminar partida",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/games/{{gameId}}",
+            "description": "Elimina la partida actual. Respuestas documentadas: 204, 401, 403, 404 y 500."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Partida eliminada\", () => pm.response.to.have.status(204));"] } }]
+        },
+        {
+          "name": "Revocar sesion",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/sessions/current",
+            "description": "Revoca la sesion y elimina la cookie de renovacion. Respuestas documentadas: 204, 401, 403 y 500."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Sesion revocada\", () => pm.response.to.have.status(204));", "if (pm.response.code === 204) { pm.collectionVariables.unset(\"accessToken\"); pm.collectionVariables.unset(\"gameId\"); }"] } }]
+        }
+      ]
+    }
+  ]
+}
