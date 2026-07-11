@@ -16,6 +16,9 @@ func TestEmbeddedCatalog(t *testing.T) {
 	if got := len(catalog.VictoryRoutes); got != 3 {
 		t.Fatalf("victory routes = %d, want 3", got)
 	}
+	if catalog.Scenario.InitialHandSize != 5 || catalog.Scenario.HandLimit != 5 {
+		t.Fatalf("hand setup = initial %d limit %d, want 5/5", catalog.Scenario.InitialHandSize, catalog.Scenario.HandLimit)
+	}
 	if card := catalog.Cards["livestock"]; card.Name != "Ganaderia" || !card.StartingCard {
 		t.Fatalf("unexpected starting card: %+v", card)
 	}

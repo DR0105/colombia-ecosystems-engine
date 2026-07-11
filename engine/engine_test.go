@@ -43,6 +43,21 @@ func TestNewGameIsDeterministic(t *testing.T) {
 	}
 }
 
+func TestEndTurnRequiresDiscardWhenInitialHandDrawsAboveLimit(t *testing.T) {
+	catalog := testCatalog(t)
+	state := testState(t, catalog)
+	result, err := Apply(state, domain.Command{Type: domain.EndTurn}, catalog)
+	if err != nil {
+		t.Fatalf("Apply() error = %v", err)
+	}
+	if result.State.Phase != domain.DiscardRequired {
+		t.Fatalf("phase = %s, want %s", result.State.Phase, domain.DiscardRequired)
+	}
+	if len(result.State.Cards.Hand) != catalog.Scenario.HandLimit+1 {
+		t.Fatalf("hand = %d, want %d", len(result.State.Cards.Hand), catalog.Scenario.HandLimit+1)
+	}
+}
+
 func TestPlayActionCard(t *testing.T) {
 	catalog := testCatalog(t)
 	state := testState(t, catalog)

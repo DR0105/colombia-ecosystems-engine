@@ -5,7 +5,7 @@
   "initialResources": { "money": 2, "people": 1, "land": 0 },
   "initialDeforestation": 340,
   "initialHandSize": 5,
-  "handLimit": 7,
+  "handLimit": 5,
   "drawPerRound": 1,
   "maxActiveEvents": 3,
   "badGovernanceRoundInterval": 16,

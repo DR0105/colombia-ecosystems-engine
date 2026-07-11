@@ -88,6 +88,9 @@ func Validate(c domain.Catalog) error {
 	if c.Scenario.ID == "" || c.Scenario.SchemaVersion < 1 {
 		problems = append(problems, errors.New("invalid scenario metadata"))
 	}
+	if c.Scenario.InitialHandSize <= 0 || c.Scenario.HandLimit <= 0 || c.Scenario.InitialHandSize > c.Scenario.HandLimit {
+		problems = append(problems, errors.New("invalid hand limits"))
+	}
 	if len(c.Cards) != 30 || len(c.CardOrder) != 30 {
 		problems = append(problems, fmt.Errorf("expected 30 cards, got %d", len(c.Cards)))
 	}

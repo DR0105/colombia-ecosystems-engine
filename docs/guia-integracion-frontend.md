@@ -115,7 +115,7 @@ Fases:
 | Valor | Significado | Interfaz recomendada |
 |---|---|---|
 | `decision` | Turno normal. | Mostrar cartas, eventos y botón de finalizar turno. |
-| `discard_required` | La mano superó el límite. | Abrir selección de descarte y bloquear las demás acciones. |
+| `discard_required` | La mano superó el límite de 5 cartas. | Abrir selección de descarte y bloquear las demás acciones. |
 | `finished` | Existe victoria o derrota. | Bloquear comandos y mostrar el resultado final. |
 
 ### Recursos
@@ -195,6 +195,11 @@ const cardsById = Object.fromEntries(catalog.cards.map((card) => [card.id, card]
 const eventsById = Object.fromEntries(catalog.events.map((event) => [event.id, event]));
 const sectorsById = Object.fromEntries(catalog.sectors.map((sector) => [sector.id, sector]));
 ```
+
+La partida inicia con 5 cartas y el límite de mano también es 5. Al final de una
+ronda, si el robo deja al jugador con 6 cartas, la API cambia `phase` a
+`discard_required`; el frontend debe mostrar únicamente acciones de descarte hasta
+que la mano vuelva a 5.
 
 ### Eventos de la partida
 

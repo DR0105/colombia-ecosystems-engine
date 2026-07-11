@@ -46,7 +46,7 @@ func TestCLIStartsAdvancesSavesAndLoads(t *testing.T) {
 	if err := loaded.Run(); err != nil {
 		t.Fatalf("load saved game: %v\n%s", err, loadedOutput.String())
 	}
-	if !strings.Contains(loadedOutput.String(), "Ronda 1") || !strings.Contains(loadedOutput.String(), "Fase: decision") {
+	if !strings.Contains(loadedOutput.String(), "Ronda 1") || !strings.Contains(loadedOutput.String(), "Fase: discard_required") {
 		t.Fatalf("CLI did not restore the game:\n%s", loadedOutput.String())
 	}
 }
