@@ -273,6 +273,7 @@ type GameState struct {
 	SchemaVersion  int                      `json:"schemaVersion"`
 	ScenarioID     string                   `json:"scenarioId"`
 	DifficultyID   string                   `json:"difficultyId"`
+	TestPresetID   string                   `json:"testPresetId,omitempty"`
 	Round          int                      `json:"round"`
 	Phase          Phase                    `json:"phase"`
 	Resources      Resources                `json:"resources"`
@@ -319,4 +320,5 @@ type AvailableActions struct {
 type NewGameOptions struct {
 	Seed         uint64
 	DifficultyID string
+	TestPresetID string
 }

@@ -14,6 +14,8 @@ import (
 
 	"github.com/josephsae/colombia-ecosystems-engine/auth"
 	"github.com/josephsae/colombia-ecosystems-engine/content"
+	"github.com/josephsae/colombia-ecosystems-engine/domain"
+	"github.com/josephsae/colombia-ecosystems-engine/engine"
 	"github.com/josephsae/colombia-ecosystems-engine/repository"
 )
 
@@ -24,6 +26,10 @@ type apiFixture struct {
 }
 
 func newAPIFixture(t *testing.T) apiFixture {
+	return newAPIFixtureWithTestPresets(t, false)
+}
+
+func newAPIFixtureWithTestPresets(t *testing.T, enabled bool) apiFixture {
 	t.Helper()
 	catalog, err := content.LoadEmbedded()
 	if err != nil {
@@ -42,12 +48,60 @@ func newAPIFixture(t *testing.T) apiFixture {
 	}
 	server, err := NewServer(repo, manager, catalog, Config{
 		AllowedOrigins: []string{testOrigin}, RefreshTTL: 30 * 24 * time.Hour, MaxGames: 20,
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		EnableTestPresets: enabled, Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}, OpenAPISpec())
 	if err != nil {
 		t.Fatal(err)
 	}
 	return apiFixture{handler: server.Handler()}
+}
+
+func TestHTTPTestPresetsAreProtectedAndFinishOnRoundTwo(t *testing.T) {
+	disabled := newAPIFixture(t)
+	disabledOwner, _ := disabled.guest(t)
+	blocked := disabled.request(t, http.MethodPost, "/api/v1/games", disabledOwner.AccessToken,
+		CreateGameRequest{Seed: 42, TestPreset: engine.PresetVictoryRestorationRound2})
+	if blocked.Code != http.StatusForbidden || !strings.Contains(blocked.Body.String(), "TEST_PRESET_NOT_ALLOWED") {
+		t.Fatalf("blocked preset status=%d body=%s", blocked.Code, blocked.Body.String())
+	}
+
+	enabled := newAPIFixtureWithTestPresets(t, true)
+	owner, _ := enabled.guest(t)
+	createdResponse := enabled.request(t, http.MethodPost, "/api/v1/games", owner.AccessToken,
+		CreateGameRequest{Seed: 42, Difficulty: "easy", TestPreset: engine.PresetVictoryRestorationRound2})
+	if createdResponse.Code != http.StatusCreated {
+		t.Fatalf("create preset status=%d body=%s", createdResponse.Code, createdResponse.Body.String())
+	}
+	var game GameResponse
+	if err := json.Unmarshal(createdResponse.Body.Bytes(), &game); err != nil {
+		t.Fatal(err)
+	}
+	if game.State.TestPresetID != engine.PresetVictoryRestorationRound2 || len(game.State.Cards.Hand) != 4 {
+		t.Fatalf("unexpected preset game: %+v", game.State)
+	}
+
+	for expectedRound := 1; expectedRound <= 2; expectedRound++ {
+		response := enabled.request(t, http.MethodPost, "/api/v1/games/"+game.ID+"/commands", owner.AccessToken,
+			CommandRequest{Type: domain.EndTurn, ExpectedVersion: game.Version})
+		if response.Code != http.StatusOK {
+			t.Fatalf("round %d status=%d body=%s", expectedRound, response.Code, response.Body.String())
+		}
+		if err := json.Unmarshal(response.Body.Bytes(), &game); err != nil {
+			t.Fatal(err)
+		}
+		if game.State.Round != expectedRound {
+			t.Fatalf("round = %d, want %d", game.State.Round, expectedRound)
+		}
+	}
+	if !game.State.Victory.Completed || game.State.Victory.Route != "restoration" || game.State.Phase != domain.Finished {
+		t.Fatalf("unexpected preset outcome: %+v", game.State)
+	}
+
+	invalid := enabled.request(t, http.MethodPost, "/api/v1/games", owner.AccessToken,
+		CreateGameRequest{TestPreset: "unknown"})
+	if invalid.Code != http.StatusBadRequest || !strings.Contains(invalid.Body.String(), "INVALID_TEST_PRESET") {
+		t.Fatalf("invalid preset status=%d body=%s", invalid.Code, invalid.Body.String())
+	}
 }
 
 func (f apiFixture) guest(t *testing.T) (SessionResponse, *http.Cookie) {

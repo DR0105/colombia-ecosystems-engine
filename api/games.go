@@ -15,6 +15,10 @@ func (s *Server) createGame(w http.ResponseWriter, r *http.Request) {
 	if !s.decodeJSON(w, r, &request) {
 		return
 	}
+	if request.TestPreset != "" && !s.config.EnableTestPresets {
+		s.writeError(w, r, http.StatusForbidden, "TEST_PRESET_NOT_ALLOWED", "Los escenarios de prueba no estan habilitados.", nil)
+		return
+	}
 	claims := claimsFrom(r.Context())
 	count, err := s.repository.CountGames(r.Context(), claims.Subject)
 	if err != nil {
@@ -25,11 +29,17 @@ func (s *Server) createGame(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusConflict, "GAME_LIMIT_REACHED", "Se alcanzo el limite de partidas.", map[string]any{"limit": s.config.MaxGames})
 		return
 	}
-	state, err := engine.NewGame(s.catalog, domain.NewGameOptions{Seed: request.Seed, DifficultyID: request.Difficulty})
+	state, err := engine.NewGame(s.catalog, domain.NewGameOptions{Seed: request.Seed, DifficultyID: request.Difficulty, TestPresetID: request.TestPreset})
 	if err != nil {
 		if errors.Is(err, engine.ErrInvalidDifficulty) {
 			s.writeError(w, r, http.StatusBadRequest, "INVALID_DIFFICULTY", "La dificultad indicada no existe.", map[string]any{
 				"received": request.Difficulty, "allowed": s.catalog.DifficultyOrder,
+			})
+			return
+		}
+		if errors.Is(err, engine.ErrInvalidTestPreset) {
+			s.writeError(w, r, http.StatusBadRequest, "INVALID_TEST_PRESET", "El escenario de prueba indicado no existe.", map[string]any{
+				"received": request.TestPreset, "allowed": engine.TestPresetIDs(),
 			})
 			return
 		}

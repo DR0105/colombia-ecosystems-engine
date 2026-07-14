@@ -53,6 +53,8 @@ func ErrorCode(err error) string {
 		return "INVALID_COMMAND"
 	case errors.Is(err, ErrInvalidDifficulty):
 		return "INVALID_DIFFICULTY"
+	case errors.Is(err, ErrInvalidTestPreset):
+		return "INVALID_TEST_PRESET"
 	default:
 		return "ENGINE_ERROR"
 	}

@@ -98,6 +98,27 @@ También puede enviarse una semilla sin indicar dificultad:
 }
 ```
 
+### Presets para pruebas del frontend
+
+En un servidor local iniciado con `APP_ENV=development` y
+`ENABLE_TEST_PRESETS=true`, la creación acepta `testPreset`:
+
+```json
+{
+  "seed": 42,
+  "difficulty": "easy",
+  "testPreset": "victory_restoration_round_2"
+}
+```
+
+Después de crearla, dos comandos `end_turn` llevan la partida a la ronda 2. Los
+presets disponibles cubren victoria por Restauración y derrotas social, ambiental
+y territorial. `state.testPresetId` permite identificar una partida preparada.
+
+Si el servidor no habilita esta función, responde `403 TEST_PRESET_NOT_ALLOWED`.
+Un nombre desconocido responde `400 INVALID_TEST_PRESET`. El frontend no debe
+mostrar este control en una compilación de producción.
+
 ## 4. Respuesta principal de una partida
 
 Los endpoints de creación, consulta y comandos devuelven `GameResponse`.

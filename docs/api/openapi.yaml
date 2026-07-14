@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Colombia Ecosystems Game API
-  version: 1.1.0
+  version: 1.2.0
   description: API REST para crear y jugar partidas del motor de ecosistemas de Colombia.
 servers:
   - url: /
@@ -92,6 +92,8 @@ paths:
               easy: { value: { seed: 42, difficulty: easy } }
               normal: { value: { seed: 42, difficulty: normal } }
               hard: { value: { seed: 42, difficulty: hard } }
+              testVictory: { value: { seed: 42, difficulty: easy, testPreset: victory_restoration_round_2 } }
+              testSocialDefeat: { value: { seed: 42, difficulty: hard, testPreset: defeat_social_round_2 } }
       responses:
         "201":
           description: Partida creada.
@@ -99,7 +101,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/GameResponse" }
         "400":
-          description: JSON invalido o dificultad desconocida.
+          description: JSON invalido, dificultad desconocida o preset inexistente.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -111,7 +113,26 @@ paths:
                       message: La dificultad indicada no existe.
                       requestId: req_0123456789abcdef0123456789abcdef
                       details: { received: extreme, allowed: [easy, normal, hard] }
+                invalidTestPreset:
+                  value:
+                    error:
+                      code: INVALID_TEST_PRESET
+                      message: El escenario de prueba indicado no existe.
+                      requestId: req_0123456789abcdef0123456789abcdef
+                      details:
+                        received: unknown
+                        allowed: [victory_restoration_round_2, defeat_social_round_2, defeat_environmental_round_2, defeat_territorial_round_2]
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Los presets estan deshabilitados en este servidor.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error:
+                  code: TEST_PRESET_NOT_ALLOWED
+                  message: Los escenarios de prueba no estan habilitados.
+                  requestId: req_0123456789abcdef0123456789abcdef
         "409": { $ref: "#/components/responses/Conflict" }
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "415": { $ref: "#/components/responses/UnsupportedMediaType" }
@@ -359,6 +380,10 @@ components:
           enum: [easy, normal, hard]
           default: easy
           description: Perfil de reglas; si se omite, se usa la dificultad predeterminada del catalogo.
+        testPreset:
+          type: string
+          enum: [victory_restoration_round_2, defeat_social_round_2, defeat_environmental_round_2, defeat_territorial_round_2]
+          description: Solo disponible cuando el servidor habilita presets de prueba fuera de produccion.
     CommandRequest:
       type: object
       additionalProperties: false
@@ -388,6 +413,9 @@ components:
         schemaVersion: { type: integer }
         scenarioId: { type: string }
         difficultyId: { type: string, enum: [easy, normal, hard] }
+        testPresetId:
+          type: string
+          enum: [victory_restoration_round_2, defeat_social_round_2, defeat_environmental_round_2, defeat_territorial_round_2]
         round: { type: integer, minimum: 0 }
         phase: { type: string, enum: [decision, discard_required, finished] }
         resources: { $ref: "#/components/schemas/Resources" }

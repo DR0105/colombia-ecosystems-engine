@@ -21,9 +21,13 @@ var (
 	ErrHandLimit             = errors.New("hand limit exceeded")
 	ErrInvalidCommand        = errors.New("invalid command")
 	ErrInvalidDifficulty     = errors.New("invalid difficulty")
+	ErrInvalidTestPreset     = errors.New("invalid test preset")
 )
 
 func NewGame(catalog domain.Catalog, options domain.NewGameOptions) (domain.GameState, error) {
+	if options.TestPresetID != "" && !validTestPreset(options.TestPresetID) {
+		return domain.GameState{}, fmt.Errorf("%w: %s", ErrInvalidTestPreset, options.TestPresetID)
+	}
 	difficultyID := options.DifficultyID
 	if difficultyID == "" {
 		difficultyID = catalog.DefaultDifficulty
@@ -79,6 +83,11 @@ func NewGame(catalog domain.Catalog, options domain.NewGameOptions) (domain.Game
 	}
 	shuffle(&state, state.Cards.Deck)
 	drawCards(&state, catalog.Scenario.InitialHandSize)
+	if options.TestPresetID != "" {
+		if err := applyTestPreset(&state, options.TestPresetID, catalog); err != nil {
+			return domain.GameState{}, err
+		}
+	}
 	normalize(&state)
 	return state, nil
 }

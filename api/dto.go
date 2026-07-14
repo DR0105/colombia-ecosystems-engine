@@ -27,6 +27,7 @@ type CurrentSessionResponse struct {
 type CreateGameRequest struct {
 	Seed       uint64 `json:"seed,omitempty"`
 	Difficulty string `json:"difficulty,omitempty"`
+	TestPreset string `json:"testPreset,omitempty"`
 }
 
 type CommandRequest struct {
@@ -56,6 +57,7 @@ type GameView struct {
 	SchemaVersion  int                                    `json:"schemaVersion"`
 	ScenarioID     string                                 `json:"scenarioId"`
 	DifficultyID   string                                 `json:"difficultyId"`
+	TestPresetID   string                                 `json:"testPresetId,omitempty"`
 	Round          int                                    `json:"round"`
 	Phase          domain.Phase                           `json:"phase"`
 	Resources      domain.Resources                       `json:"resources"`
@@ -135,7 +137,7 @@ func publicState(state domain.GameState, defaultDifficulty string) GameView {
 		sectors[id] = sector
 	}
 	return GameView{
-		SchemaVersion: state.SchemaVersion, ScenarioID: state.ScenarioID, DifficultyID: difficultyID(state, defaultDifficulty), Round: state.Round, Phase: state.Phase,
+		SchemaVersion: state.SchemaVersion, ScenarioID: state.ScenarioID, DifficultyID: difficultyID(state, defaultDifficulty), TestPresetID: state.TestPresetID, Round: state.Round, Phase: state.Phase,
 		Resources: state.Resources, Environment: state.Environment, Sectors: sectors,
 		Cards: CardZonesView{
 			Hand: append([]string(nil), state.Cards.Hand...), DeckCount: len(state.Cards.Deck),

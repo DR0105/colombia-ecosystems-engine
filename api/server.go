@@ -23,11 +23,12 @@ const maxBodyBytes = 1 << 20
 var gameIDPattern = regexp.MustCompile(`^game_[a-f0-9]{32}$`)
 
 type Config struct {
-	AllowedOrigins []string
-	CookieSecure   bool
-	RefreshTTL     time.Duration
-	MaxGames       int
-	Logger         *slog.Logger
+	AllowedOrigins    []string
+	CookieSecure      bool
+	EnableTestPresets bool
+	RefreshTTL        time.Duration
+	MaxGames          int
+	Logger            *slog.Logger
 }
 
 type Server struct {

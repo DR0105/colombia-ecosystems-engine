@@ -138,6 +138,28 @@ curl -X POST http://localhost:8080/api/v1/games \
 En HTTP, omitir `difficulty` también crea la partida en modo `easy`. Para elegir
 otro perfil, envía `"difficulty":"normal"` o `"difficulty":"hard"`.
 
+## Presets de prueba
+
+Para probar desenlaces en la ronda 2, inicia la API local con:
+
+```bash
+APP_ENV=development ENABLE_TEST_PRESETS=true \
+HTTP_ADDR=127.0.0.1:8081 \
+JWT_SECRET="local-development-secret-at-least-32-bytes" \
+./bin/api
+```
+
+Al crear una partida, usa uno de estos valores en `testPreset`:
+
+- `victory_restoration_round_2`
+- `defeat_social_round_2`
+- `defeat_environmental_round_2`
+- `defeat_territorial_round_2`
+
+Ejecuta `end_turn` dos veces usando la version devuelta por cada respuesta. Los
+presets estan desactivados por defecto y la API no permite habilitarlos cuando
+`APP_ENV=production`.
+
 Aplicar un comando:
 
 ```bash
