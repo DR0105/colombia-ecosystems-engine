@@ -5,7 +5,7 @@ ifeq ($(shell uname -s),Darwin)
 LDFLAGS := -ldflags=-linkmode=external
 endif
 
-.PHONY: fmt vet test race build-api build-cli
+.PHONY: fmt vet test race build-api build-cli simulate
 
 fmt:
 	$(GO) fmt ./...
@@ -26,3 +26,6 @@ build-api:
 build-cli:
 	mkdir -p bin
 	$(GO) build $(LDFLAGS) -o bin/amazonas ./cmd/amazonas
+
+simulate:
+	$(GO) run $(LDFLAGS) ./cmd/simulate --games 100 --max-rounds 80 --seed 1

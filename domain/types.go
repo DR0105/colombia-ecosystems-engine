@@ -1,5 +1,7 @@
 package domain
 
+const LegacyDifficultyID = "normal"
+
 type ResourceID string
 
 const (
@@ -161,6 +163,35 @@ type VictoryRoute struct {
 	NoTerminalEvent  bool     `json:"noTerminalEvent"`
 }
 
+type VictoryModifiers struct {
+	MinCards         int `json:"minCards"`
+	MaxDeforestation int `json:"maxDeforestation"`
+	MinPeople        int `json:"minPeople"`
+	MinLand          int `json:"minLand"`
+}
+
+type DifficultyDefinition struct {
+	ID                               string           `json:"id"`
+	Name                             string           `json:"name"`
+	InitialResources                 Resources        `json:"initialResources"`
+	InitialDeforestation             int              `json:"initialDeforestation"`
+	MaxActiveEvents                  int              `json:"maxActiveEvents"`
+	RandomEventProbabilityMultiplier float64          `json:"randomEventProbabilityMultiplier"`
+	BadGovernanceRoundInterval       int              `json:"badGovernanceRoundInterval"`
+	SocialPressureLimit              int              `json:"socialPressureLimit"`
+	TerritorialFailureLimit          int              `json:"territorialFailureLimit"`
+	VictoryModifiers                 VictoryModifiers `json:"victoryModifiers"`
+}
+
+type ResolvedRules struct {
+	DifficultyID                     string
+	MaxActiveEvents                  int
+	RandomEventProbabilityMultiplier float64
+	BadGovernanceRoundInterval       int
+	SocialPressureLimit              int
+	TerritorialFailureLimit          int
+}
+
 type Scenario struct {
 	ID                         string    `json:"id"`
 	Name                       string    `json:"name"`
@@ -176,14 +207,17 @@ type Scenario struct {
 }
 
 type Catalog struct {
-	Scenario      Scenario
-	Cards         map[string]CardDefinition
-	CardOrder     []string
-	Sectors       map[SectorID]SectorDefinition
-	Events        map[string]EventDefinition
-	EventOrder    []string
-	TippingPoints []TippingPointDefinition
-	VictoryRoutes []VictoryRoute
+	Scenario          Scenario
+	Cards             map[string]CardDefinition
+	CardOrder         []string
+	Sectors           map[SectorID]SectorDefinition
+	Events            map[string]EventDefinition
+	EventOrder        []string
+	TippingPoints     []TippingPointDefinition
+	VictoryRoutes     []VictoryRoute
+	DefaultDifficulty string
+	Difficulties      map[string]DifficultyDefinition
+	DifficultyOrder   []string
 }
 
 type SectorState struct {
@@ -238,6 +272,7 @@ type DefeatState struct {
 type GameState struct {
 	SchemaVersion  int                      `json:"schemaVersion"`
 	ScenarioID     string                   `json:"scenarioId"`
+	DifficultyID   string                   `json:"difficultyId"`
 	Round          int                      `json:"round"`
 	Phase          Phase                    `json:"phase"`
 	Resources      Resources                `json:"resources"`
@@ -282,5 +317,6 @@ type AvailableActions struct {
 }
 
 type NewGameOptions struct {
-	Seed uint64
+	Seed         uint64
+	DifficultyID string
 }

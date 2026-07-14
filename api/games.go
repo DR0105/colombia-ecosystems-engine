@@ -25,8 +25,14 @@ func (s *Server) createGame(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusConflict, "GAME_LIMIT_REACHED", "Se alcanzo el limite de partidas.", map[string]any{"limit": s.config.MaxGames})
 		return
 	}
-	state, err := engine.NewGame(s.catalog, domain.NewGameOptions{Seed: request.Seed})
+	state, err := engine.NewGame(s.catalog, domain.NewGameOptions{Seed: request.Seed, DifficultyID: request.Difficulty})
 	if err != nil {
+		if errors.Is(err, engine.ErrInvalidDifficulty) {
+			s.writeError(w, r, http.StatusBadRequest, "INVALID_DIFFICULTY", "La dificultad indicada no existe.", map[string]any{
+				"received": request.Difficulty, "allowed": s.catalog.DifficultyOrder,
+			})
+			return
+		}
 		s.writeError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "No fue posible crear el estado inicial.", nil)
 		return
 	}
@@ -64,7 +70,8 @@ func (s *Server) listGames(w http.ResponseWriter, r *http.Request) {
 	for _, game := range page.Games {
 		response.Games = append(response.Games, GameSummary{
 			ID: game.ID, Version: game.Version, Round: game.State.Round, Phase: game.State.Phase,
-			Victory: game.State.Victory, Defeat: game.State.Defeat, CreatedAt: game.CreatedAt, UpdatedAt: game.UpdatedAt,
+			DifficultyID: difficultyID(game.State, domain.LegacyDifficultyID),
+			Victory:      game.State.Victory, Defeat: game.State.Defeat, CreatedAt: game.CreatedAt, UpdatedAt: game.UpdatedAt,
 		})
 	}
 	s.writeJSON(w, http.StatusOK, response)

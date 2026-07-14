@@ -20,9 +20,18 @@ var (
 	ErrEventNotActive        = errors.New("event not active")
 	ErrHandLimit             = errors.New("hand limit exceeded")
 	ErrInvalidCommand        = errors.New("invalid command")
+	ErrInvalidDifficulty     = errors.New("invalid difficulty")
 )
 
 func NewGame(catalog domain.Catalog, options domain.NewGameOptions) (domain.GameState, error) {
+	difficultyID := options.DifficultyID
+	if difficultyID == "" {
+		difficultyID = catalog.DefaultDifficulty
+	}
+	difficulty, ok := catalog.Difficulties[difficultyID]
+	if !ok {
+		return domain.GameState{}, fmt.Errorf("%w: %s", ErrInvalidDifficulty, difficultyID)
+	}
 	seed := options.Seed
 	if seed == 0 {
 		var data [8]byte
@@ -38,10 +47,11 @@ func NewGame(catalog domain.Catalog, options domain.NewGameOptions) (domain.Game
 	state := domain.GameState{
 		SchemaVersion: catalog.Scenario.SchemaVersion,
 		ScenarioID:    catalog.Scenario.ID,
+		DifficultyID:  difficultyID,
 		Phase:         domain.Decision,
-		Resources:     catalog.Scenario.InitialResources,
+		Resources:     difficulty.InitialResources,
 		Environment: domain.EnvironmentState{
-			Deforestation: catalog.Scenario.InitialDeforestation,
+			Deforestation: difficulty.InitialDeforestation,
 		},
 		Sectors: make(map[domain.SectorID]domain.SectorState, len(catalog.Sectors)),
 		Cards: domain.CardZones{
@@ -73,12 +83,34 @@ func NewGame(catalog domain.Catalog, options domain.NewGameOptions) (domain.Game
 	return state, nil
 }
 
+func RulesFor(state domain.GameState, catalog domain.Catalog) (domain.ResolvedRules, error) {
+	difficultyID := state.DifficultyID
+	if difficultyID == "" {
+		difficultyID = domain.LegacyDifficultyID
+	}
+	difficulty, ok := catalog.Difficulties[difficultyID]
+	if !ok {
+		return domain.ResolvedRules{}, fmt.Errorf("%w: %s", ErrInvalidDifficulty, difficultyID)
+	}
+	return domain.ResolvedRules{
+		DifficultyID:                     difficultyID,
+		MaxActiveEvents:                  difficulty.MaxActiveEvents,
+		RandomEventProbabilityMultiplier: difficulty.RandomEventProbabilityMultiplier,
+		BadGovernanceRoundInterval:       difficulty.BadGovernanceRoundInterval,
+		SocialPressureLimit:              difficulty.SocialPressureLimit,
+		TerritorialFailureLimit:          difficulty.TerritorialFailureLimit,
+	}, nil
+}
+
 func Apply(state domain.GameState, command domain.Command, catalog domain.Catalog) (domain.Result, error) {
 	if state.Defeat.GameOver || state.Victory.Completed || state.Phase == domain.Finished {
 		return domain.Result{}, ErrGameAlreadyOver
 	}
 	if state.SchemaVersion != catalog.Scenario.SchemaVersion || state.ScenarioID != catalog.Scenario.ID {
 		return domain.Result{}, fmt.Errorf("state is incompatible with catalog")
+	}
+	if _, err := RulesFor(state, catalog); err != nil {
+		return domain.Result{}, err
 	}
 	if state.Phase == domain.DiscardRequired && command.Type != domain.DiscardCard {
 		return domain.Result{}, ErrHandLimit

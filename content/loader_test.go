@@ -16,6 +16,12 @@ func TestEmbeddedCatalog(t *testing.T) {
 	if got := len(catalog.VictoryRoutes); got != 3 {
 		t.Fatalf("victory routes = %d, want 3", got)
 	}
+	if catalog.DefaultDifficulty != "easy" || len(catalog.Difficulties) != 3 {
+		t.Fatalf("difficulties = %q/%d, want easy/3", catalog.DefaultDifficulty, len(catalog.Difficulties))
+	}
+	if easy := catalog.Difficulties["easy"]; easy.MaxActiveEvents != 2 || easy.SocialPressureLimit != 4 {
+		t.Fatalf("unexpected easy difficulty: %+v", easy)
+	}
 	if catalog.Scenario.InitialHandSize != 5 || catalog.Scenario.HandLimit != 5 {
 		t.Fatalf("hand setup = initial %d limit %d, want 5/5", catalog.Scenario.InitialHandSize, catalog.Scenario.HandLimit)
 	}

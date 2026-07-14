@@ -31,3 +31,26 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 		t.Fatal("loaded state differs from saved state")
 	}
 }
+
+func TestLoadDefaultsLegacyStateToNormalDifficulty(t *testing.T) {
+	catalog, err := content.LoadEmbedded()
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := engine.NewGame(catalog, domain.NewGameOptions{Seed: 99})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state.DifficultyID = ""
+	path := t.TempDir() + "/legacy.json"
+	if err := Save(path, state); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := Load(path, catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.DifficultyID != "normal" {
+		t.Fatalf("difficulty = %q, want normal", loaded.DifficultyID)
+	}
+}

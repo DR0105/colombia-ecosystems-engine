@@ -33,6 +33,7 @@
     { "key": "accessToken", "value": "", "type": "string" },
     { "key": "gameId", "value": "", "type": "string" },
     { "key": "expectedVersion", "value": "1", "type": "string" },
+    { "key": "difficulty", "value": "easy", "type": "string" },
     { "key": "cardId", "value": "livestock", "type": "string" },
     { "key": "playableCardId", "value": "", "type": "string" },
     { "key": "discardCardId", "value": "", "type": "string" },
@@ -135,9 +136,9 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/catalog",
-            "description": "Obtiene escenario, cartas, sectores, eventos, tipping points y rutas de victoria. Respuestas documentadas: 200 y 500."
+            "description": "Obtiene escenario, dificultades, cartas, sectores, eventos, tipping points y rutas de victoria. Respuestas documentadas: 200 y 500."
           },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Catalogo disponible\", () => pm.response.to.have.status(200));", "pm.test(\"Contiene 30 cartas\", () => pm.expect(pm.response.json().cards).to.have.lengthOf(30));"] } }]
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Catalogo disponible\", () => pm.response.to.have.status(200));", "pm.test(\"Contiene 30 cartas\", () => pm.expect(pm.response.json().cards).to.have.lengthOf(30));", "pm.test(\"Contiene tres dificultades\", () => pm.expect(pm.response.json().difficulties).to.have.lengthOf(3));"] } }]
         },
         {
           "name": "Consultar carta",
@@ -160,11 +161,11 @@
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"seed\": 42\n}" },
+            "body": { "mode": "raw", "raw": "{\n  \"seed\": 42,\n  \"difficulty\": \"{{difficulty}}\"\n}" },
             "url": "{{baseUrl}}/api/v1/games",
             "description": "Crea una partida con semilla fija y guarda gameId, expectedVersion y acciones disponibles. Respuestas documentadas: 201, 400, 401, 409, 413, 415 y 500."
           },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Partida creada\", () => pm.response.to.have.status(201));", "const body = pm.response.json();", "pm.collectionVariables.set(\"gameId\", body.id);", "pm.collectionVariables.set(\"expectedVersion\", String(body.version));", "const playable = Object.entries(body.availableActions.cards || {}).find(([, value]) => value.allowed);", "if (playable) pm.collectionVariables.set(\"playableCardId\", playable[0]);", "const discardable = Object.entries(body.availableActions.discards || {}).find(([, value]) => value.allowed);", "if (discardable) pm.collectionVariables.set(\"discardCardId\", discardable[0]);", "const resolvable = Object.entries(body.availableActions.events || {}).find(([, value]) => value.allowed);", "if (resolvable) pm.collectionVariables.set(\"eventId\", resolvable[0]);"] } }]
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test(\"Partida creada\", () => pm.response.to.have.status(201));", "const body = pm.response.json();", "pm.expect(body.state.difficultyId).to.eql(pm.collectionVariables.get(\"difficulty\"));", "pm.collectionVariables.set(\"gameId\", body.id);", "pm.collectionVariables.set(\"expectedVersion\", String(body.version));", "const playable = Object.entries(body.availableActions.cards || {}).find(([, value]) => value.allowed);", "if (playable) pm.collectionVariables.set(\"playableCardId\", playable[0]);", "const discardable = Object.entries(body.availableActions.discards || {}).find(([, value]) => value.allowed);", "if (discardable) pm.collectionVariables.set(\"discardCardId\", discardable[0]);", "const resolvable = Object.entries(body.availableActions.events || {}).find(([, value]) => value.allowed);", "if (resolvable) pm.collectionVariables.set(\"eventId\", resolvable[0]);"] } }]
         },
         {
           "name": "Consultar partida",

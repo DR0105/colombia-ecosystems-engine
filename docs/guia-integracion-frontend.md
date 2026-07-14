@@ -67,6 +67,37 @@ El `accessToken` debe mantenerse preferiblemente en memoria. Si una solicitud
 responde `401`, el cliente puede intentar una sola renovación y repetir la solicitud.
 Si la renovación falla, debe crear una nueva sesión o volver a una pantalla de inicio.
 
+### Seleccionar dificultad
+
+Antes de crear una partida, el cliente debe consultar `GET /api/v1/catalog` y
+renderizar `difficulties`. Debe enviar el `id` seleccionado, no el nombre visible:
+
+```json
+{
+  "seed": 42,
+  "difficulty": "easy"
+}
+```
+
+Los valores aceptados son `easy`, `normal` y `hard`. Si no se envía el campo, la
+API usa `defaultDifficulty`, actualmente `easy`. Un ID desconocido responde
+`400 INVALID_DIFFICULTY`. El selector debe iniciar con el valor predeterminado del
+catálogo y quedar bloqueado después de crear la partida.
+
+El body mínimo usa automáticamente la dificultad fácil:
+
+```json
+{}
+```
+
+También puede enviarse una semilla sin indicar dificultad:
+
+```json
+{
+  "seed": 42
+}
+```
+
 ## 4. Respuesta principal de una partida
 
 Los endpoints de creación, consulta y comandos devuelven `GameResponse`.
@@ -107,6 +138,7 @@ versión local manualmente.
 |---|---|---|---|
 | `schemaVersion` | `number` | Versión del formato del estado. | Registrar para compatibilidad; no mostrar como mecánica. |
 | `scenarioId` | `string` | Escenario activo, por ejemplo `amazonas_mvp`. | Seleccionar textos, imágenes y tema del escenario. |
+| `difficultyId` | `string` | Perfil inmutable elegido al crear la partida. | Mostrar la etiqueta correspondiente desde el catálogo. |
 | `round` | `number` | Ronda actual; una partida nueva comienza en `0`. | Mostrar en el encabezado del tablero. |
 | `phase` | `GamePhase` | Fase que limita las acciones posibles. | Cambiar controles y navegación. |
 
@@ -222,8 +254,11 @@ La posibilidad de resolverlo se obtiene de
 
 ### Presión social
 
-`socialPressure` es un entero acumulativo. El valor `3` produce derrota social.
-Debe mostrarse como un medidor de tres niveles y resaltarse cuando aumenta.
+`socialPressure` es un entero acumulativo. El límite depende de la dificultad:
+4 en fácil, 3 en normal y 2 en difícil. Debe mostrarse como un medidor cuyo máximo
+se obtiene de `difficulties[].socialPressureLimit` y resaltarse cuando aumenta.
+Quedarse temporalmente sin Personas no causa derrota inmediata; las consecuencias
+de eventos pueden elevar la presión hasta el límite.
 
 ### Victoria
 
@@ -245,6 +280,10 @@ desde el catálogo.
 
 La derrota se evalúa antes que la victoria. Si el estado incluye ambas señales,
 el frontend debe priorizar la derrota.
+
+La derrota territorial ocurre al alcanzar el límite de crisis territoriales
+expiradas del perfil: 3 en fácil y 2 en normal o difícil. Tener Tierra en cero no
+termina por sí solo la partida.
 
 ## 6. Acciones disponibles
 
@@ -374,6 +413,8 @@ El catálogo contiene:
 | Variable | Uso en el frontend |
 |---|---|
 | `scenario` | Nombre, límites y configuración general. |
+| `defaultDifficulty` | ID que debe aparecer seleccionado inicialmente. |
+| `difficulties` | Recursos iniciales, presión de eventos y modificadores de victoria por perfil. |
 | `cards` | Nombre, tipo, sector, costo, requisitos, flechas, efectos y texto. |
 | `sectors` | Objetivos de ciclo, producción e impacto ambiental. |
 | `events` | Nombre, categoría, duración y solución de eventos. |
@@ -460,6 +501,7 @@ interface GameResponse {
 interface GameView {
   schemaVersion: number;
   scenarioId: string;
+  difficultyId: "easy" | "normal" | "hard";
   round: number;
   phase: GamePhase;
   resources: { money: number; people: number; land: number };
@@ -528,6 +570,7 @@ Responsabilidades:
 - Crear o renovar una sesión antes de acceder a partidas.
 - Enviar `Authorization: Bearer <accessToken>` en endpoints protegidos.
 - Cargar e indexar el catálogo antes de renderizar IDs de contenido.
+- Construir el selector de dificultad desde el catálogo y enviar su ID al crear la partida.
 - Normalizar las listas `null` a arreglos vacíos.
 - Mantener un solo `GameResponse` vigente por partida.
 - Enviar siempre la `version` actual como `expectedVersion`.

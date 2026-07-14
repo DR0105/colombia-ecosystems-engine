@@ -20,6 +20,11 @@ type eventFile struct {
 	TippingPoints []domain.TippingPointDefinition `json:"tippingPoints"`
 }
 
+type difficultyFile struct {
+	DefaultDifficulty string                        `json:"defaultDifficulty"`
+	Difficulties      []domain.DifficultyDefinition `json:"difficulties"`
+}
+
 func LoadEmbedded() (domain.Catalog, error) {
 	return LoadFS(assets.FS)
 }
@@ -30,6 +35,7 @@ func LoadFS(source fs.FS) (domain.Catalog, error) {
 	var sectors []domain.SectorDefinition
 	var events eventFile
 	var victories victoryFile
+	var difficulties difficultyFile
 
 	if err := decode(source, "scenario.amazonas_mvp.json", &scenario); err != nil {
 		return domain.Catalog{}, err
@@ -46,14 +52,19 @@ func LoadFS(source fs.FS) (domain.Catalog, error) {
 	if err := decode(source, "victory_routes.amazonas_mvp.json", &victories); err != nil {
 		return domain.Catalog{}, err
 	}
+	if err := decode(source, "difficulties.amazonas_mvp.json", &difficulties); err != nil {
+		return domain.Catalog{}, err
+	}
 
 	catalog := domain.Catalog{
-		Scenario:      scenario,
-		Cards:         make(map[string]domain.CardDefinition, len(cards)),
-		Sectors:       make(map[domain.SectorID]domain.SectorDefinition, len(sectors)),
-		Events:        make(map[string]domain.EventDefinition, len(events.Events)),
-		TippingPoints: events.TippingPoints,
-		VictoryRoutes: victories.Routes,
+		Scenario:          scenario,
+		Cards:             make(map[string]domain.CardDefinition, len(cards)),
+		Sectors:           make(map[domain.SectorID]domain.SectorDefinition, len(sectors)),
+		Events:            make(map[string]domain.EventDefinition, len(events.Events)),
+		TippingPoints:     events.TippingPoints,
+		VictoryRoutes:     victories.Routes,
+		DefaultDifficulty: difficulties.DefaultDifficulty,
+		Difficulties:      make(map[string]domain.DifficultyDefinition, len(difficulties.Difficulties)),
 	}
 	for _, card := range cards {
 		catalog.Cards[card.ID] = card
@@ -65,6 +76,10 @@ func LoadFS(source fs.FS) (domain.Catalog, error) {
 	for _, event := range events.Events {
 		catalog.Events[event.ID] = event
 		catalog.EventOrder = append(catalog.EventOrder, event.ID)
+	}
+	for _, difficulty := range difficulties.Difficulties {
+		catalog.Difficulties[difficulty.ID] = difficulty
+		catalog.DifficultyOrder = append(catalog.DifficultyOrder, difficulty.ID)
 	}
 	if err := Validate(catalog); err != nil {
 		return domain.Catalog{}, err
@@ -90,6 +105,39 @@ func Validate(c domain.Catalog) error {
 	}
 	if c.Scenario.InitialHandSize <= 0 || c.Scenario.HandLimit <= 0 || c.Scenario.InitialHandSize > c.Scenario.HandLimit {
 		problems = append(problems, errors.New("invalid hand limits"))
+	}
+	if len(c.Difficulties) != 3 || len(c.DifficultyOrder) != 3 {
+		problems = append(problems, fmt.Errorf("expected 3 difficulties, got %d", len(c.Difficulties)))
+	}
+	if _, ok := c.Difficulties[c.DefaultDifficulty]; !ok {
+		problems = append(problems, fmt.Errorf("unknown default difficulty %q", c.DefaultDifficulty))
+	}
+	seenDifficulties := map[string]bool{}
+	for _, id := range c.DifficultyOrder {
+		difficulty, ok := c.Difficulties[id]
+		if !ok || id == "" || difficulty.Name == "" || seenDifficulties[id] {
+			problems = append(problems, fmt.Errorf("invalid or duplicate difficulty %q", id))
+			continue
+		}
+		seenDifficulties[id] = true
+		if difficulty.InitialResources.Money < 0 || difficulty.InitialResources.People < 0 || difficulty.InitialResources.Land < 0 || difficulty.InitialDeforestation < 0 {
+			problems = append(problems, fmt.Errorf("difficulty %q has invalid initial state", id))
+		}
+		if difficulty.MaxActiveEvents <= 0 || difficulty.RandomEventProbabilityMultiplier < 0 || difficulty.BadGovernanceRoundInterval <= 0 || difficulty.SocialPressureLimit <= 0 || difficulty.TerritorialFailureLimit <= 0 {
+			problems = append(problems, fmt.Errorf("difficulty %q has invalid rules", id))
+		}
+		for _, route := range c.VictoryRoutes {
+			minCards := route.MinCards + difficulty.VictoryModifiers.MinCards
+			if minCards < 1 {
+				minCards = 1
+			}
+			if minCards > len(route.RequiredCards) {
+				minCards = len(route.RequiredCards)
+			}
+			if minCards < 1 || route.MaxDeforestation+difficulty.VictoryModifiers.MaxDeforestation < 0 {
+				problems = append(problems, fmt.Errorf("difficulty %q makes victory route %q invalid", id, route.ID))
+			}
+		}
 	}
 	if len(c.Cards) != 30 || len(c.CardOrder) != 30 {
 		problems = append(problems, fmt.Errorf("expected 30 cards, got %d", len(c.Cards)))

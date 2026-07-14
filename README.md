@@ -9,13 +9,14 @@ Motor de juego por turnos para escenarios ambientales de Colombia, implementado 
 - Turnos, flechas, produccion y deforestacion.
 - Doce eventos con tipping points, azar y mal gobierno.
 - Tres rutas de victoria y tres condiciones de derrota.
+- Tres dificultades configurables: facil, normal y dificil.
 - Guardado y carga de partidas JSON.
 - CLI interactiva para probar una partida completa.
 
 ## Ejecutar
 
 ```bash
-go run ./cmd/amazonas new --seed 42
+go run ./cmd/amazonas new --seed 42 --difficulty easy
 ```
 
 Para cargar una partida:
@@ -23,6 +24,8 @@ Para cargar una partida:
 ```bash
 go run ./cmd/amazonas load saves/partida.json
 ```
+
+Si `--difficulty` se omite, la partida comienza en dificultad `easy`.
 
 Dentro de la consola:
 
@@ -53,6 +56,12 @@ make fmt
 make vet
 make test
 make race
+```
+
+Para ejecutar simulaciones reproducibles de balance:
+
+```bash
+make simulate
 ```
 
 El `Makefile` usa el enlazador del sistema en macOS para mantener compatibilidad con Go 1.22.5 en versiones recientes del sistema operativo.
@@ -123,8 +132,11 @@ La respuesta contiene `accessToken`. Usalo para crear una partida:
 curl -X POST http://localhost:8080/api/v1/games \
   -H "Authorization: Bearer ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"seed":42}'
+  -d '{"seed":42,"difficulty":"easy"}'
 ```
+
+En HTTP, omitir `difficulty` también crea la partida en modo `easy`. Para elegir
+otro perfil, envía `"difficulty":"normal"` o `"difficulty":"hard"`.
 
 Aplicar un comando:
 

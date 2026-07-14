@@ -20,11 +20,22 @@ func testCatalog(t *testing.T) domain.Catalog {
 
 func testState(t *testing.T, catalog domain.Catalog) domain.GameState {
 	t.Helper()
-	state, err := NewGame(catalog, domain.NewGameOptions{Seed: 42})
+	state, err := NewGame(catalog, domain.NewGameOptions{Seed: 42, DifficultyID: "normal"})
 	if err != nil {
 		t.Fatalf("new game: %v", err)
 	}
 	return state
+}
+
+func TestNewGameDefaultsToEasy(t *testing.T) {
+	catalog := testCatalog(t)
+	state, err := NewGame(catalog, domain.NewGameOptions{Seed: 42})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.DifficultyID != "easy" || state.Resources != (domain.Resources{Money: 3, People: 2, Land: 1}) || state.Environment.Deforestation != 250 {
+		t.Fatalf("default state = difficulty %q resources %+v deforestation %d", state.DifficultyID, state.Resources, state.Environment.Deforestation)
+	}
 }
 
 func TestNewGameIsDeterministic(t *testing.T) {
@@ -37,9 +48,122 @@ func TestNewGameIsDeterministic(t *testing.T) {
 	if len(first.Cards.Hand) != 5 || len(first.Cards.Deck) != 24 {
 		t.Fatalf("hand/deck = %d/%d, want 5/24", len(first.Cards.Hand), len(first.Cards.Deck))
 	}
+	if first.DifficultyID != "normal" {
+		t.Fatalf("difficulty = %q, want normal", first.DifficultyID)
+	}
 	industry := first.Sectors[domain.Industry]
 	if !industry.Active || !reflect.DeepEqual(industry.ActiveCards, []string{"livestock"}) {
 		t.Fatalf("unexpected industry state: %+v", industry)
+	}
+}
+
+func TestNewGameAppliesDifficultyAndRejectsUnknown(t *testing.T) {
+	catalog := testCatalog(t)
+	easy, err := NewGame(catalog, domain.NewGameOptions{Seed: 42, DifficultyID: "easy"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if easy.Resources != (domain.Resources{Money: 3, People: 2, Land: 1}) || easy.Environment.Deforestation != 250 {
+		t.Fatalf("easy initial state = %+v/%d", easy.Resources, easy.Environment.Deforestation)
+	}
+	hard, err := NewGame(catalog, domain.NewGameOptions{Seed: 42, DifficultyID: "hard"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hard.Resources != (domain.Resources{Money: 1, People: 1}) || hard.Environment.Deforestation != 500 {
+		t.Fatalf("hard initial state = %+v/%d", hard.Resources, hard.Environment.Deforestation)
+	}
+	if _, err := NewGame(catalog, domain.NewGameOptions{DifficultyID: "unknown"}); !errors.Is(err, ErrInvalidDifficulty) {
+		t.Fatalf("error = %v, want ErrInvalidDifficulty", err)
+	}
+}
+
+func TestRulesAndEventProbabilityFollowDifficulty(t *testing.T) {
+	catalog := testCatalog(t)
+	definition := catalog.Events["forest_fires"]
+	for _, test := range []struct {
+		id          string
+		maxEvents   int
+		probability float64
+	}{
+		{id: "easy", maxEvents: 2, probability: 0.06},
+		{id: "normal", maxEvents: 3, probability: 0.08},
+		{id: "hard", maxEvents: 4, probability: 0.10},
+	} {
+		state, err := NewGame(catalog, domain.NewGameOptions{Seed: 42, DifficultyID: test.id})
+		if err != nil {
+			t.Fatal(err)
+		}
+		industry := state.Sectors[domain.Industry]
+		industry.ActiveCards = nil
+		state.Sectors[domain.Industry] = industry
+		rules, err := RulesFor(state, catalog)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rules.MaxActiveEvents != test.maxEvents {
+			t.Errorf("%s max events = %d", test.id, rules.MaxActiveEvents)
+		}
+		if got := effectiveEventProbability(state, definition, rules, catalog); got != test.probability {
+			t.Errorf("%s probability = %v, want %v", test.id, got, test.probability)
+		}
+	}
+}
+
+func TestDifficultyControlsEventCapacityAndGovernmentInterval(t *testing.T) {
+	catalog := testCatalog(t)
+	easy, _ := NewGame(catalog, domain.NewGameOptions{Seed: 42, DifficultyID: "easy"})
+	easy.Events.Active = []domain.ActiveEvent{{ID: "heat_wave"}, {ID: "famine"}}
+	var emitted []domain.DomainEvent
+	if !spawnEvent(&easy, "forest_fires", catalog, &emitted) || len(easy.Events.Active) != 2 || len(easy.Events.Queued) != 1 {
+		t.Fatalf("easy event capacity not enforced: %+v", easy.Events)
+	}
+
+	normal, _ := NewGame(catalog, domain.NewGameOptions{Seed: 42, DifficultyID: "normal"})
+	normal.Events.Active = []domain.ActiveEvent{{ID: "heat_wave"}, {ID: "famine"}}
+	emitted = nil
+	if !spawnEvent(&normal, "forest_fires", catalog, &emitted) || len(normal.Events.Active) != 3 || len(normal.Events.Queued) != 0 {
+		t.Fatalf("normal event capacity not enforced: %+v", normal.Events)
+	}
+
+	hard, _ := NewGame(catalog, domain.NewGameOptions{Seed: 42, DifficultyID: "hard"})
+	hard.Round = 12
+	emitted = nil
+	spawnBadGovernance(&hard, catalog, &emitted)
+	if len(hard.Events.Active) != 1 || catalog.Events[hard.Events.Active[0].ID].Category != domain.BadGovernance {
+		t.Fatalf("hard government interval did not spawn an event: %+v", hard.Events)
+	}
+}
+
+func TestDifficultyChangesOutcomeThresholds(t *testing.T) {
+	catalog := testCatalog(t)
+	easy, _ := NewGame(catalog, domain.NewGameOptions{Seed: 42, DifficultyID: "easy"})
+	easy.SocialPressure = 3
+	easy.Cards.Projects = []string{"biodiversity_corridors", "community_agreement", "integral_reserve"}
+	easy.Environment.Deforestation = 1400
+	easy.Resources.Land = 2
+	var emitted []domain.DomainEvent
+	evaluateOutcome(&easy, catalog, &emitted)
+	if easy.Defeat.GameOver || !easy.Victory.Completed || easy.Victory.Route != "restoration" {
+		t.Fatalf("unexpected easy outcome: victory=%+v defeat=%+v", easy.Victory, easy.Defeat)
+	}
+
+	hard, _ := NewGame(catalog, domain.NewGameOptions{Seed: 42, DifficultyID: "hard"})
+	hard.SocialPressure = 2
+	emitted = nil
+	evaluateOutcome(&hard, catalog, &emitted)
+	if hard.Defeat.Reason != "social_collapse" {
+		t.Fatalf("hard social defeat = %+v", hard.Defeat)
+	}
+
+	easy, _ = NewGame(catalog, domain.NewGameOptions{Seed: 42, DifficultyID: "easy"})
+	easy.Events.TerritorialFailures = 2
+	easy.Resources.People = 0
+	easy.Events.Active = []domain.ActiveEvent{{ID: "famine", RoundsRemaining: 1}}
+	emitted = nil
+	evaluateOutcome(&easy, catalog, &emitted)
+	if easy.Defeat.GameOver {
+		t.Fatalf("easy game ended before its visible thresholds: %+v", easy.Defeat)
 	}
 }
 

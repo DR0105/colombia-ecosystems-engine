@@ -67,4 +67,9 @@ func TestOpenAPISpecIsValidAndDocumentsEveryRoute(t *testing.T) {
 			t.Errorf("missing security scheme %s", scheme)
 		}
 	}
+	for _, schema := range []string{"DifficultyDefinition", "VictoryModifiers"} {
+		if _, ok := document.Components.Schemas[schema]; !ok {
+			t.Errorf("missing schema %s", schema)
+		}
+	}
 }

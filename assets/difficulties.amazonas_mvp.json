@@ -1,0 +1,41 @@
+{
+  "defaultDifficulty": "easy",
+  "difficulties": [
+    {
+      "id": "easy",
+      "name": "Facil",
+      "initialResources": { "money": 3, "people": 2, "land": 1 },
+      "initialDeforestation": 250,
+      "maxActiveEvents": 2,
+      "randomEventProbabilityMultiplier": 0.75,
+      "badGovernanceRoundInterval": 20,
+      "socialPressureLimit": 4,
+      "territorialFailureLimit": 3,
+      "victoryModifiers": { "minCards": -1, "maxDeforestation": 300, "minPeople": -1, "minLand": -1 }
+    },
+    {
+      "id": "normal",
+      "name": "Normal",
+      "initialResources": { "money": 2, "people": 1, "land": 0 },
+      "initialDeforestation": 340,
+      "maxActiveEvents": 3,
+      "randomEventProbabilityMultiplier": 1.0,
+      "badGovernanceRoundInterval": 16,
+      "socialPressureLimit": 3,
+      "territorialFailureLimit": 2,
+      "victoryModifiers": { "minCards": 0, "maxDeforestation": 0, "minPeople": 0, "minLand": 0 }
+    },
+    {
+      "id": "hard",
+      "name": "Dificil",
+      "initialResources": { "money": 1, "people": 1, "land": 0 },
+      "initialDeforestation": 500,
+      "maxActiveEvents": 4,
+      "randomEventProbabilityMultiplier": 1.25,
+      "badGovernanceRoundInterval": 12,
+      "socialPressureLimit": 2,
+      "territorialFailureLimit": 2,
+      "victoryModifiers": { "minCards": 1, "maxDeforestation": -200, "minPeople": 1, "minLand": 0 }
+    }
+  ]
+}

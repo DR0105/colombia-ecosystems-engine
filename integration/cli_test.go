@@ -23,7 +23,7 @@ func TestCLIStartsAdvancesSavesAndLoads(t *testing.T) {
 	}
 
 	savePath := filepath.Join(t.TempDir(), "partida.json")
-	created := exec.Command(binary, "new", "--seed", "42")
+	created := exec.Command(binary, "new", "--seed", "42", "--difficulty", "easy")
 	created.Stdin = strings.NewReader("end\nsave " + savePath + "\nquit\n")
 	var createdOutput bytes.Buffer
 	created.Stdout = &createdOutput
@@ -33,6 +33,9 @@ func TestCLIStartsAdvancesSavesAndLoads(t *testing.T) {
 	}
 	if !strings.Contains(createdOutput.String(), "Ronda 1") {
 		t.Fatalf("CLI did not advance the round:\n%s", createdOutput.String())
+	}
+	if !strings.Contains(createdOutput.String(), "Dificultad: Facil") {
+		t.Fatalf("CLI did not show difficulty:\n%s", createdOutput.String())
 	}
 	if _, err := os.Stat(savePath); err != nil {
 		t.Fatalf("CLI did not create save: %v", err)

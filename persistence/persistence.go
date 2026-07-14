@@ -43,6 +43,9 @@ func Load(path string, catalog domain.Catalog) (domain.GameState, error) {
 	if err := ValidateState(state, catalog); err != nil {
 		return domain.GameState{}, err
 	}
+	if state.DifficultyID == "" {
+		state.DifficultyID = domain.LegacyDifficultyID
+	}
 	return state, nil
 }
 
@@ -52,6 +55,13 @@ func ValidateState(state domain.GameState, catalog domain.Catalog) error {
 	}
 	if state.ScenarioID != catalog.Scenario.ID {
 		return fmt.Errorf("unknown scenario %q", state.ScenarioID)
+	}
+	difficultyID := state.DifficultyID
+	if difficultyID == "" {
+		difficultyID = domain.LegacyDifficultyID
+	}
+	if _, ok := catalog.Difficulties[difficultyID]; !ok {
+		return fmt.Errorf("unknown difficulty %q", difficultyID)
 	}
 	for _, id := range append(append(append([]string{}, state.Cards.Hand...), state.Cards.Deck...), state.Cards.Discard...) {
 		if _, ok := catalog.Cards[id]; !ok {

@@ -51,6 +51,8 @@ func ErrorCode(err error) string {
 		return "HAND_LIMIT_EXCEEDED"
 	case errors.Is(err, ErrInvalidCommand):
 		return "INVALID_COMMAND"
+	case errors.Is(err, ErrInvalidDifficulty):
+		return "INVALID_DIFFICULTY"
 	default:
 		return "ENGINE_ERROR"
 	}

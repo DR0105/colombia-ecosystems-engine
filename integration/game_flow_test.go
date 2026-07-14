@@ -15,7 +15,7 @@ func TestPublicGameFlowAndPersistence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load catalog: %v", err)
 	}
-	state, err := engine.NewGame(catalog, domain.NewGameOptions{Seed: 42})
+	state, err := engine.NewGame(catalog, domain.NewGameOptions{Seed: 42, DifficultyID: "normal"})
 	if err != nil {
 		t.Fatalf("new game: %v", err)
 	}

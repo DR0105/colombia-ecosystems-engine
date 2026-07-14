@@ -3,6 +3,11 @@ package engine
 import "github.com/josephsae/colombia-ecosystems-engine/domain"
 
 func evaluateOutcome(state *domain.GameState, catalog domain.Catalog, emitted *[]domain.DomainEvent) {
+	rules, err := RulesFor(*state, catalog)
+	if err != nil {
+		setDefeat(state, "invalid_game_state", emitted)
+		return
+	}
 	if state.Defeat.GameOver {
 		state.Phase = domain.Finished
 		return
@@ -11,12 +16,11 @@ func evaluateOutcome(state *domain.GameState, catalog domain.Catalog, emitted *[
 		setDefeat(state, "environmental_collapse", emitted)
 		return
 	}
-	if state.SocialPressure >= 3 || (state.Resources.People == 0 && hasActiveSocialCrisis(*state)) {
+	if state.SocialPressure >= rules.SocialPressureLimit {
 		setDefeat(state, "social_collapse", emitted)
 		return
 	}
-	territory := state.Sectors[domain.Territory]
-	if state.Events.TerritorialFailures >= 2 || (territory.Active && state.Resources.Land == 0 && activeEventIndex(*state, "land_tenure_conflict") >= 0) {
+	if state.Events.TerritorialFailures >= rules.TerritorialFailureLimit {
 		setDefeat(state, "territorial_collapse", emitted)
 		return
 	}
@@ -45,24 +49,24 @@ func hasTerminalEvent(state domain.GameState, catalog domain.Catalog) bool {
 	return false
 }
 
-func hasActiveSocialCrisis(state domain.GameState) bool {
-	for _, id := range []string{"famine", "food_conflict", "armed_conflict", "health_crisis"} {
-		if activeEventIndex(state, id) >= 0 {
-			return true
-		}
-	}
-	return false
-}
-
 func routeCompleted(state domain.GameState, route domain.VictoryRoute, catalog domain.Catalog) bool {
+	difficultyID := state.DifficultyID
+	if difficultyID == "" {
+		difficultyID = domain.LegacyDifficultyID
+	}
+	modifiers := catalog.Difficulties[difficultyID].VictoryModifiers
+	maxDeforestation := route.MaxDeforestation + modifiers.MaxDeforestation
+	minPeople := max(0, route.MinPeople+modifiers.MinPeople)
+	minLand := max(0, route.MinLand+modifiers.MinLand)
+	minCards := min(len(route.RequiredCards), max(1, route.MinCards+modifiers.MinCards))
 	if route.MaxExclusive {
-		if state.Environment.Deforestation >= route.MaxDeforestation {
+		if state.Environment.Deforestation >= maxDeforestation {
 			return false
 		}
-	} else if state.Environment.Deforestation > route.MaxDeforestation {
+	} else if state.Environment.Deforestation > maxDeforestation {
 		return false
 	}
-	if state.Resources.People < route.MinPeople || state.Resources.Land < route.MinLand {
+	if state.Resources.People < minPeople || state.Resources.Land < minLand {
 		return false
 	}
 	if route.NoTerminalEvent && hasTerminalEvent(state, catalog) {
@@ -81,5 +85,5 @@ func routeCompleted(state domain.GameState, route domain.VictoryRoute, catalog d
 			completed++
 		}
 	}
-	return completed >= route.MinCards
+	return completed >= minCards
 }

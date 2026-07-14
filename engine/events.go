@@ -60,7 +60,11 @@ func spawnEvent(state *domain.GameState, eventID string, catalog domain.Catalog,
 	if definition.CooldownRounds > 0 {
 		state.Events.Cooldowns[eventID] = definition.CooldownRounds
 	}
-	if definition.Terminal || len(state.Events.Active) < catalog.Scenario.MaxActiveEvents {
+	rules, err := RulesFor(*state, catalog)
+	if err != nil {
+		return false
+	}
+	if definition.Terminal || len(state.Events.Active) < rules.MaxActiveEvents {
 		state.Events.Active = append(state.Events.Active, domain.ActiveEvent{ID: eventID, RoundsRemaining: definition.InitialRounds})
 		*emitted = append(*emitted, domain.DomainEvent{Type: "event_spawned", Message: "Evento activado: " + definition.Name})
 		return true
@@ -179,10 +183,14 @@ func payPartial(current *domain.Resources, required domain.Resources) bool {
 }
 
 func activateQueuedEvents(state *domain.GameState, catalog domain.Catalog, emitted *[]domain.DomainEvent) {
+	rules, err := RulesFor(*state, catalog)
+	if err != nil {
+		return
+	}
 	sort.SliceStable(state.Events.Queued, func(i, j int) bool {
 		return state.Events.Queued[i].Priority < state.Events.Queued[j].Priority
 	})
-	for len(state.Events.Queued) > 0 && len(state.Events.Active) < catalog.Scenario.MaxActiveEvents {
+	for len(state.Events.Queued) > 0 && len(state.Events.Active) < rules.MaxActiveEvents {
 		queued := state.Events.Queued[0]
 		state.Events.Queued = state.Events.Queued[1:]
 		definition := catalog.Events[queued.ID]
@@ -195,22 +203,31 @@ func activateQueuedEvents(state *domain.GameState, catalog domain.Catalog, emitt
 }
 
 func spawnRandomEvent(state *domain.GameState, catalog domain.Catalog, emitted *[]domain.DomainEvent) {
+	rules, err := RulesFor(*state, catalog)
+	if err != nil {
+		return
+	}
 	for _, id := range catalog.EventOrder {
 		definition := catalog.Events[id]
 		if definition.Category != domain.RandomEvent || !eventEligible(*state, definition) {
 			continue
 		}
-		probability := definition.BaseProbability + eventModifier(*state, id, catalog)
-		if probability < 0 {
-			probability = 0
-		}
-		if probability > 1 {
-			probability = 1
-		}
+		probability := effectiveEventProbability(*state, definition, rules, catalog)
 		if nextFloat64(state) < probability && spawnEvent(state, id, catalog, emitted) {
 			return
 		}
 	}
+}
+
+func effectiveEventProbability(state domain.GameState, definition domain.EventDefinition, rules domain.ResolvedRules, catalog domain.Catalog) float64 {
+	probability := (definition.BaseProbability + eventModifier(state, definition.ID, catalog)) * rules.RandomEventProbabilityMultiplier
+	if probability < 0 {
+		return 0
+	}
+	if probability > 1 {
+		return 1
+	}
+	return probability
 }
 
 func eventEligible(state domain.GameState, definition domain.EventDefinition) bool {
@@ -235,7 +252,11 @@ func eventModifier(state domain.GameState, eventID string, catalog domain.Catalo
 }
 
 func spawnBadGovernance(state *domain.GameState, catalog domain.Catalog, emitted *[]domain.DomainEvent) {
-	interval := catalog.Scenario.BadGovernanceRoundInterval
+	rules, err := RulesFor(*state, catalog)
+	if err != nil {
+		return
+	}
+	interval := rules.BadGovernanceRoundInterval
 	if interval <= 0 || state.Round%interval != 0 {
 		return
 	}

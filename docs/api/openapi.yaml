@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Colombia Ecosystems Game API
-  version: 1.0.0
+  version: 1.1.0
   description: API REST para crear y jugar partidas del motor de ecosistemas de Colombia.
 servers:
   - url: /
@@ -89,14 +89,28 @@ paths:
             schema: { $ref: "#/components/schemas/CreateGameRequest" }
             examples:
               random: { value: {} }
-              reproducible: { value: { seed: 42 } }
+              easy: { value: { seed: 42, difficulty: easy } }
+              normal: { value: { seed: 42, difficulty: normal } }
+              hard: { value: { seed: 42, difficulty: hard } }
       responses:
         "201":
           description: Partida creada.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/GameResponse" }
-        "400": { $ref: "#/components/responses/BadRequest" }
+        "400":
+          description: JSON invalido o dificultad desconocida.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                invalidDifficulty:
+                  value:
+                    error:
+                      code: INVALID_DIFFICULTY
+                      message: La dificultad indicada no existe.
+                      requestId: req_0123456789abcdef0123456789abcdef
+                      details: { received: extreme, allowed: [easy, normal, hard] }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "409": { $ref: "#/components/responses/Conflict" }
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
@@ -340,6 +354,11 @@ components:
       additionalProperties: false
       properties:
         seed: { type: integer, format: uint64, minimum: 0 }
+        difficulty:
+          type: string
+          enum: [easy, normal, hard]
+          default: easy
+          description: Perfil de reglas; si se omite, se usa la dificultad predeterminada del catalogo.
     CommandRequest:
       type: object
       additionalProperties: false
@@ -364,10 +383,11 @@ components:
           items: { $ref: "#/components/schemas/DomainEvent" }
     GameView:
       type: object
-      required: [schemaVersion, scenarioId, round, phase, resources, environment, sectors, cards, events, socialPressure, victory, defeat]
+      required: [schemaVersion, scenarioId, difficultyId, round, phase, resources, environment, sectors, cards, events, socialPressure, victory, defeat]
       properties:
         schemaVersion: { type: integer }
         scenarioId: { type: string }
+        difficultyId: { type: string, enum: [easy, normal, hard] }
         round: { type: integer, minimum: 0 }
         phase: { type: string, enum: [decision, discard_required, finished] }
         resources: { $ref: "#/components/schemas/Resources" }
@@ -463,12 +483,13 @@ components:
         data: { type: object, additionalProperties: true }
     GameSummary:
       type: object
-      required: [id, version, round, phase, victory, defeat, createdAt, updatedAt]
+      required: [id, version, round, phase, difficultyId, victory, defeat, createdAt, updatedAt]
       properties:
         id: { type: string }
         version: { type: integer, format: uint64 }
         round: { type: integer }
         phase: { type: string }
+        difficultyId: { type: string, enum: [easy, normal, hard] }
         victory: { $ref: "#/components/schemas/VictoryState" }
         defeat: { $ref: "#/components/schemas/DefeatState" }
         createdAt: { type: string, format: date-time }
@@ -481,7 +502,7 @@ components:
         nextCursor: { type: string }
     CatalogResponse:
       type: object
-      required: [scenario, cards, sectors, events, tippingPoints, victoryRoutes]
+      required: [scenario, cards, sectors, events, tippingPoints, victoryRoutes, defaultDifficulty, difficulties]
       properties:
         scenario: { $ref: "#/components/schemas/Scenario" }
         cards: { type: array, items: { $ref: "#/components/schemas/CardDefinition" } }
@@ -489,6 +510,30 @@ components:
         events: { type: array, items: { $ref: "#/components/schemas/EventDefinition" } }
         tippingPoints: { type: array, items: { $ref: "#/components/schemas/TippingPoint" } }
         victoryRoutes: { type: array, items: { $ref: "#/components/schemas/VictoryRoute" } }
+        defaultDifficulty: { type: string, enum: [easy, normal, hard] }
+        difficulties: { type: array, items: { $ref: "#/components/schemas/DifficultyDefinition" } }
+    DifficultyDefinition:
+      type: object
+      required: [id, name, initialResources, initialDeforestation, maxActiveEvents, randomEventProbabilityMultiplier, badGovernanceRoundInterval, socialPressureLimit, territorialFailureLimit, victoryModifiers]
+      properties:
+        id: { type: string, enum: [easy, normal, hard] }
+        name: { type: string }
+        initialResources: { $ref: "#/components/schemas/Resources" }
+        initialDeforestation: { type: integer, minimum: 0 }
+        maxActiveEvents: { type: integer, minimum: 1 }
+        randomEventProbabilityMultiplier: { type: number, format: double, minimum: 0 }
+        badGovernanceRoundInterval: { type: integer, minimum: 1 }
+        socialPressureLimit: { type: integer, minimum: 1 }
+        territorialFailureLimit: { type: integer, minimum: 1 }
+        victoryModifiers: { $ref: "#/components/schemas/VictoryModifiers" }
+    VictoryModifiers:
+      type: object
+      required: [minCards, maxDeforestation, minPeople, minLand]
+      properties:
+        minCards: { type: integer }
+        maxDeforestation: { type: integer }
+        minPeople: { type: integer }
+        minLand: { type: integer }
     Scenario:
       type: object
       additionalProperties: true

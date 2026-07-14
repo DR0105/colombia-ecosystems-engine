@@ -25,7 +25,8 @@ type CurrentSessionResponse struct {
 }
 
 type CreateGameRequest struct {
-	Seed uint64 `json:"seed,omitempty"`
+	Seed       uint64 `json:"seed,omitempty"`
+	Difficulty string `json:"difficulty,omitempty"`
 }
 
 type CommandRequest struct {
@@ -54,6 +55,7 @@ type EventStateView struct {
 type GameView struct {
 	SchemaVersion  int                                    `json:"schemaVersion"`
 	ScenarioID     string                                 `json:"scenarioId"`
+	DifficultyID   string                                 `json:"difficultyId"`
 	Round          int                                    `json:"round"`
 	Phase          domain.Phase                           `json:"phase"`
 	Resources      domain.Resources                       `json:"resources"`
@@ -77,14 +79,15 @@ type GameResponse struct {
 }
 
 type GameSummary struct {
-	ID        string              `json:"id"`
-	Version   uint64              `json:"version"`
-	Round     int                 `json:"round"`
-	Phase     domain.Phase        `json:"phase"`
-	Victory   domain.VictoryState `json:"victory"`
-	Defeat    domain.DefeatState  `json:"defeat"`
-	CreatedAt time.Time           `json:"createdAt"`
-	UpdatedAt time.Time           `json:"updatedAt"`
+	ID           string              `json:"id"`
+	Version      uint64              `json:"version"`
+	Round        int                 `json:"round"`
+	Phase        domain.Phase        `json:"phase"`
+	DifficultyID string              `json:"difficultyId"`
+	Victory      domain.VictoryState `json:"victory"`
+	Defeat       domain.DefeatState  `json:"defeat"`
+	CreatedAt    time.Time           `json:"createdAt"`
+	UpdatedAt    time.Time           `json:"updatedAt"`
 }
 
 type ListGamesResponse struct {
@@ -93,12 +96,14 @@ type ListGamesResponse struct {
 }
 
 type CatalogResponse struct {
-	Scenario      domain.Scenario                 `json:"scenario"`
-	Cards         []domain.CardDefinition         `json:"cards"`
-	Sectors       []domain.SectorDefinition       `json:"sectors"`
-	Events        []domain.EventDefinition        `json:"events"`
-	TippingPoints []domain.TippingPointDefinition `json:"tippingPoints"`
-	VictoryRoutes []domain.VictoryRoute           `json:"victoryRoutes"`
+	Scenario          domain.Scenario                 `json:"scenario"`
+	Cards             []domain.CardDefinition         `json:"cards"`
+	Sectors           []domain.SectorDefinition       `json:"sectors"`
+	Events            []domain.EventDefinition        `json:"events"`
+	TippingPoints     []domain.TippingPointDefinition `json:"tippingPoints"`
+	VictoryRoutes     []domain.VictoryRoute           `json:"victoryRoutes"`
+	DefaultDifficulty string                          `json:"defaultDifficulty"`
+	Difficulties      []domain.DifficultyDefinition   `json:"difficulties"`
 }
 
 type ErrorBody struct {
@@ -115,11 +120,11 @@ type ErrorResponse struct {
 func gameResponse(game repository.StoredGame, catalog domain.Catalog, events []domain.DomainEvent) GameResponse {
 	return GameResponse{
 		ID: game.ID, Version: game.Version, CreatedAt: game.CreatedAt, UpdatedAt: game.UpdatedAt,
-		State: publicState(game.State), AvailableActions: engine.Inspect(game.State, catalog), DomainEvents: events,
+		State: publicState(game.State, domain.LegacyDifficultyID), AvailableActions: engine.Inspect(game.State, catalog), DomainEvents: events,
 	}
 }
 
-func publicState(state domain.GameState) GameView {
+func publicState(state domain.GameState, defaultDifficulty string) GameView {
 	milestones := make(map[string]bool, len(state.Cards.Milestones))
 	for key, value := range state.Cards.Milestones {
 		milestones[key] = value
@@ -130,7 +135,7 @@ func publicState(state domain.GameState) GameView {
 		sectors[id] = sector
 	}
 	return GameView{
-		SchemaVersion: state.SchemaVersion, ScenarioID: state.ScenarioID, Round: state.Round, Phase: state.Phase,
+		SchemaVersion: state.SchemaVersion, ScenarioID: state.ScenarioID, DifficultyID: difficultyID(state, defaultDifficulty), Round: state.Round, Phase: state.Phase,
 		Resources: state.Resources, Environment: state.Environment, Sectors: sectors,
 		Cards: CardZonesView{
 			Hand: append([]string(nil), state.Cards.Hand...), DeckCount: len(state.Cards.Deck),
@@ -146,7 +151,10 @@ func publicState(state domain.GameState) GameView {
 }
 
 func catalogResponse(catalog domain.Catalog) CatalogResponse {
-	result := CatalogResponse{Scenario: catalog.Scenario, TippingPoints: catalog.TippingPoints, VictoryRoutes: catalog.VictoryRoutes}
+	result := CatalogResponse{Scenario: catalog.Scenario, TippingPoints: catalog.TippingPoints, VictoryRoutes: catalog.VictoryRoutes, DefaultDifficulty: catalog.DefaultDifficulty}
+	for _, id := range catalog.DifficultyOrder {
+		result.Difficulties = append(result.Difficulties, catalog.Difficulties[id])
+	}
 	for _, id := range catalog.CardOrder {
 		result.Cards = append(result.Cards, catalog.Cards[id])
 	}
@@ -158,4 +166,11 @@ func catalogResponse(catalog domain.Catalog) CatalogResponse {
 		result.Events = append(result.Events, catalog.Events[id])
 	}
 	return result
+}
+
+func difficultyID(state domain.GameState, fallback string) string {
+	if state.DifficultyID != "" {
+		return state.DifficultyID
+	}
+	return fallback
 }

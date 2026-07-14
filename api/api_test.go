@@ -96,7 +96,7 @@ func (f apiFixture) request(t *testing.T, method, path, token string, body any) 
 func TestHTTPGameFlowOwnershipAndVersioning(t *testing.T) {
 	fixture := newAPIFixture(t)
 	owner, _ := fixture.guest(t)
-	createdResponse := fixture.request(t, http.MethodPost, "/api/v1/games", owner.AccessToken, CreateGameRequest{Seed: 42})
+	createdResponse := fixture.request(t, http.MethodPost, "/api/v1/games", owner.AccessToken, CreateGameRequest{Seed: 42, Difficulty: "easy"})
 	if createdResponse.Code != http.StatusCreated {
 		t.Fatalf("create game status=%d body=%s", createdResponse.Code, createdResponse.Body.String())
 	}
@@ -110,7 +110,7 @@ func TestHTTPGameFlowOwnershipAndVersioning(t *testing.T) {
 	if err := json.Unmarshal([]byte(body), &created); err != nil {
 		t.Fatal(err)
 	}
-	if created.Version != 1 || created.State.Cards.DeckCount != 24 || len(created.State.Cards.Hand) != 5 {
+	if created.Version != 1 || created.State.DifficultyID != "easy" || created.State.Resources.Money != 3 || created.State.Cards.DeckCount != 24 || len(created.State.Cards.Hand) != 5 {
 		t.Fatalf("unexpected created game: %+v", created)
 	}
 
@@ -143,6 +143,23 @@ func TestHTTPGameFlowOwnershipAndVersioning(t *testing.T) {
 	deleted := fixture.request(t, http.MethodDelete, "/api/v1/games/"+created.ID, owner.AccessToken, nil)
 	if deleted.Code != http.StatusNoContent {
 		t.Fatalf("delete status=%d body=%s", deleted.Code, deleted.Body.String())
+	}
+}
+
+func TestHTTPDifficultyDefaultsValidatesAndAppearsInCatalog(t *testing.T) {
+	fixture := newAPIFixture(t)
+	owner, _ := fixture.guest(t)
+	created := fixture.request(t, http.MethodPost, "/api/v1/games", owner.AccessToken, CreateGameRequest{Seed: 42})
+	if created.Code != http.StatusCreated || !strings.Contains(created.Body.String(), `"difficultyId":"easy"`) || !strings.Contains(created.Body.String(), `"money":3`) {
+		t.Fatalf("default difficulty status=%d body=%s", created.Code, created.Body.String())
+	}
+	invalid := fixture.request(t, http.MethodPost, "/api/v1/games", owner.AccessToken, CreateGameRequest{Difficulty: "extreme"})
+	if invalid.Code != http.StatusBadRequest || !strings.Contains(invalid.Body.String(), "INVALID_DIFFICULTY") || !strings.Contains(invalid.Body.String(), "easy") {
+		t.Fatalf("invalid difficulty status=%d body=%s", invalid.Code, invalid.Body.String())
+	}
+	catalog := fixture.request(t, http.MethodGet, "/api/v1/catalog", "", nil)
+	if catalog.Code != http.StatusOK || !strings.Contains(catalog.Body.String(), `"defaultDifficulty":"easy"`) || !strings.Contains(catalog.Body.String(), `"id":"hard"`) {
+		t.Fatalf("catalog status=%d body=%s", catalog.Code, catalog.Body.String())
 	}
 }
 

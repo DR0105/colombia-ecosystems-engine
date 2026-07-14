@@ -29,8 +29,9 @@ func main() {
 	case "new":
 		flags := flag.NewFlagSet("new", flag.ExitOnError)
 		seed := flags.Uint64("seed", 0, "semilla reproducible")
+		difficulty := flags.String("difficulty", catalog.DefaultDifficulty, "dificultad: easy, normal o hard")
 		_ = flags.Parse(os.Args[2:])
-		state, err = engine.NewGame(catalog, domain.NewGameOptions{Seed: *seed})
+		state, err = engine.NewGame(catalog, domain.NewGameOptions{Seed: *seed, DifficultyID: *difficulty})
 	case "load":
 		flags := flag.NewFlagSet("load", flag.ExitOnError)
 		_ = flags.Parse(os.Args[2:])
@@ -125,7 +126,12 @@ func applyCommand(state domain.GameState, catalog domain.Catalog, parts []string
 }
 
 func printStatus(state domain.GameState, catalog domain.Catalog) {
-	fmt.Printf("\nRonda %d | Fase: %s\n", state.Round, state.Phase)
+	difficulty := state.DifficultyID
+	if difficulty == "" {
+		difficulty = catalog.DefaultDifficulty
+	}
+	fmt.Printf("\nEscenario: %s | Dificultad: %s\n", catalog.Scenario.Name, catalog.Difficulties[difficulty].Name)
+	fmt.Printf("Ronda %d | Fase: %s\n", state.Round, state.Phase)
 	fmt.Printf("Recursos: dinero=%d personas=%d tierra=%d\n", state.Resources.Money, state.Resources.People, state.Resources.Land)
 	fmt.Printf("Deforestacion: %d | Temperatura: %s | Presion social: %d\n", state.Environment.Deforestation, state.Environment.TemperatureLabel, state.SocialPressure)
 	for _, id := range []domain.SectorID{domain.Industry, domain.Population, domain.Territory, domain.Ecosystems} {
@@ -195,7 +201,7 @@ func printHelp() {
 
 func usage() {
 	fmt.Println("Uso:")
-	fmt.Println("  amazonas new [--seed N]")
+	fmt.Println("  amazonas new [--seed N] [--difficulty easy|normal|hard]")
 	fmt.Println("  amazonas load <archivo>")
 }
 
