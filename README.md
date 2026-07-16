@@ -2,6 +2,21 @@
 
 Motor de juego por turnos para escenarios ambientales de Colombia, implementado en Go 1.22. El Amazonas es el primer escenario jugable.
 
+## Dataset de referencia
+
+Los escenarios y umbrales del juego están inspirados por datos reales de focos de calor satelitales de la Amazonia colombiana:
+
+- **Link:** https://www.datos.gov.co/dataset/Puntos-de-calor-por-regi-n-Hist-rico-Escala-1-100-/4dyk-z4e2/about_data
+- **Entidad:** SIATAC – Sistema de Información Ambiental Territorial de la Amazonia Colombiana
+- **Cobertura:** 10 departamentos de la Amazonia y Orinoquía, desde enero 2017 hasta la fecha actual
+
+## Repositorio frontend y modelo de predicción
+
+La lógica de análisis de datos y el modelo predictivo de focos de calor (RandomForestRegressor por departamento) se encuentran en:
+
+- **Repositorio:** https://github.com/devscastellanos/AmazonIA-front
+- **Scripts:** `analytics/limpiar_datos.py` y `analytics/prediccion_datos.py`
+
 ## Incluye
 
 - 30 cartas configurables basadas en el PDF del MVP.
