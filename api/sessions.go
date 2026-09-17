@@ -9,7 +9,13 @@ import (
 	"github.com/josephsae/colombia-ecosystems-engine/repository"
 )
 
-const refreshCookieName = "amazonas_refresh"
+const (
+	refreshCookieName = "amazonas_refresh"
+	// The frontend exposes the API through /api while the backend serves it
+	// directly under /api/v1. This common path lets the browser send the same
+	// refresh cookie in both cases.
+	refreshCookiePath = "/api"
+)
 
 func (s *Server) createGuestSession(w http.ResponseWriter, r *http.Request) {
 	tokens, err := s.auth.CreateGuest(r.Context())
@@ -67,7 +73,7 @@ func sessionResponse(tokens auth.SessionTokens) SessionResponse {
 
 func (s *Server) setRefreshCookie(w http.ResponseWriter, value string, expires time.Time) {
 	http.SetCookie(w, &http.Cookie{
-		Name: refreshCookieName, Value: value, Path: "/api/v1/sessions", HttpOnly: true,
+		Name: refreshCookieName, Value: value, Path: refreshCookiePath, HttpOnly: true,
 		Secure: s.config.CookieSecure, SameSite: http.SameSiteLaxMode, Expires: expires,
 		MaxAge: int(time.Until(expires).Seconds()),
 	})
@@ -75,7 +81,7 @@ func (s *Server) setRefreshCookie(w http.ResponseWriter, value string, expires t
 
 func (s *Server) clearRefreshCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
-		Name: refreshCookieName, Value: "", Path: "/api/v1/sessions", HttpOnly: true,
+		Name: refreshCookieName, Value: "", Path: refreshCookiePath, HttpOnly: true,
 		Secure: s.config.CookieSecure, SameSite: http.SameSiteLaxMode, MaxAge: -1,
 	})
 }

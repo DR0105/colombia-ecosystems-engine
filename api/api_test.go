@@ -118,7 +118,7 @@ func (f apiFixture) guest(t *testing.T) (SessionResponse, *http.Cookie) {
 		t.Fatal(err)
 	}
 	cookies := response.Result().Cookies()
-	if len(cookies) != 1 || cookies[0].Name != refreshCookieName || !cookies[0].HttpOnly {
+	if len(cookies) != 1 || cookies[0].Name != refreshCookieName || cookies[0].Path != refreshCookiePath || !cookies[0].HttpOnly {
 		t.Fatalf("unexpected refresh cookie: %+v", cookies)
 	}
 	return session, cookies[0]
@@ -231,6 +231,9 @@ func TestHTTPSessionRefreshCORSAndContentType(t *testing.T) {
 	if refreshResponse.Result().Cookies()[0].Value == cookie.Value {
 		t.Fatal("refresh cookie was not rotated")
 	}
+	if refreshResponse.Result().Cookies()[0].Path != refreshCookiePath {
+		t.Fatalf("refresh cookie path = %q, want %q", refreshResponse.Result().Cookies()[0].Path, refreshCookiePath)
+	}
 
 	replayRequest := httptest.NewRequest(http.MethodPost, "/api/v1/sessions/refresh", nil)
 	replayRequest.Header.Set("Origin", testOrigin)
@@ -239,6 +242,10 @@ func TestHTTPSessionRefreshCORSAndContentType(t *testing.T) {
 	fixture.handler.ServeHTTP(replayResponse, replayRequest)
 	if replayResponse.Code != http.StatusUnauthorized || !strings.Contains(replayResponse.Body.String(), "REFRESH_REUSED") {
 		t.Fatalf("replay status=%d body=%s", replayResponse.Code, replayResponse.Body.String())
+	}
+	clearedCookies := replayResponse.Result().Cookies()
+	if len(clearedCookies) != 1 || clearedCookies[0].Path != refreshCookiePath || clearedCookies[0].MaxAge != -1 {
+		t.Fatalf("unexpected cleared refresh cookie: %+v", clearedCookies)
 	}
 
 	badOrigin := httptest.NewRequest(http.MethodGet, "/api/v1/catalog", nil)
